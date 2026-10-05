@@ -1,0 +1,148 @@
+/* Выпадающий список.
+
+   Нативный <select> не используется: его список рисует операционная система,
+   он не знает ни о тёмной теме, ни о наших радиусах и отступах, и выглядит
+   чужеродно. Витрина объявлена источником пиксель-перфекта (docs/prototype.md),
+   поэтому контрол собран целиком из своих поверхностей.
+
+   Клавиатура работает как у нативного: стрелки, Home, End, Enter, пробел,
+   Esc, поиск набором первых букв. */
+
+.wrap {
+  position: relative;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  min-height: var(--control-md);
+  padding: 0 var(--space-16);
+  background: var(--surface-2);
+  border: var(--border-width) solid var(--border-interactive);
+  border-radius: var(--radius-field);
+  color: var(--text);
+  font-size: var(--fs-body);
+  text-align: start;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.trigger:hover:not(:disabled) {
+  border-color: var(--text-muted);
+}
+
+.trigger:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.invalid {
+  border-color: var(--danger);
+}
+
+.value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.placeholder {
+  color: var(--text-muted);
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* --- Список ----------------------------------------------------------------
+   Отдельная поверхность с тенью: это слой над содержимым, а не часть поля. */
+.popup {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + var(--space-4));
+  left: 0;
+  right: 0;
+  max-height: calc(var(--control-md) * 6);
+  overflow-y: auto;
+  padding: var(--space-4);
+  margin: 0;
+  list-style: none;
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-overlay);
+  /* Анимируем только прозрачность и сдвиг (docs/prototype.md). */
+  animation: popupIn var(--dur-fast) var(--ease-out);
+}
+
+/* Если места снизу не хватает, список раскрывается вверх. */
+.popupUp {
+  top: auto;
+  bottom: calc(100% + var(--space-4));
+}
+
+@keyframes popupIn {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--space-4) * -1));
+  }
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: var(--control-sm);
+  padding: 0 var(--space-12);
+  border-radius: var(--radius-field);
+  font-size: var(--fs-body);
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* Подсветка пункта под курсором и под стрелками — одна и та же: иначе
+   с клавиатуры непонятно, что сейчас выбрано.
+
+   Берём фирменную тонировку, а не --surface-2: на светлой теме вложенная
+   поверхность отличается от белой карточки примерно на 1.03:1, и при
+   навигации стрелками не видно, где находишься. */
+.active {
+  background: var(--brand-soft);
+}
+
+.selected {
+  color: var(--brand-text);
+  font-weight: var(--fw-medium);
+}
+
+.optionDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.check {
+  flex-shrink: 0;
+  margin-inline-start: auto;
+}
+
+/* Галка занимает место всегда: иначе подпись дёргается при выборе. */
+.checkHidden {
+  visibility: hidden;
+}
+
+.empty {
+  padding: var(--space-12);
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+  text-align: center;
+}

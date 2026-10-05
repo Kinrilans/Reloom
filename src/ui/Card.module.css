@@ -1,0 +1,78 @@
+/* Карточная система: контент разложен по карточкам на фоне, а не налит
+   в сплошное полотно (docs/design-direction.md). Вложенные карточки —
+   поверхностью чуть светлее, без границ. */
+
+.card {
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-card);
+  position: relative;
+}
+
+/* Вложенная: светлее родителя и без границы. */
+.nested {
+  background: var(--surface-2);
+  border-color: transparent;
+}
+
+/* Крупная фирменная плашка: градиент с зерном. Уместна на экране входа,
+   в пустых состояниях, на лицевой стороне карты — но не за таблицами и
+   формами, где градиент снижает читаемость (docs/brand.md). */
+.brand {
+  background: var(--grad-brand);
+  border-color: transparent;
+  border-radius: var(--radius-slab);
+  color: var(--on-brand);
+  overflow: hidden;
+}
+
+.glow {
+  box-shadow: var(--glow-brand);
+}
+
+/* --- Плотность -------------------------------------------------------------
+   Приложение просторное, админка плотная. Одинаковая плотность на обеих
+   поверхностях — ошибка в обе стороны (docs/design-direction.md). */
+.roomy {
+  padding: var(--space-20);
+}
+
+.dense {
+  padding: var(--space-16);
+}
+
+.flush {
+  padding: 0;
+}
+
+/* --- Шапка карточки --------------------------------------------------------- */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-16);
+  margin-bottom: var(--space-16);
+}
+
+.titleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.title {
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-heading);
+}
+
+.subtitle {
+  font-size: var(--fs-caption);
+  line-height: var(--lh-dense);
+  color: var(--text-muted);
+}
+
+.action {
+  flex-shrink: 0;
+}

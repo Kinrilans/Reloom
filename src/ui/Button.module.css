@@ -1,0 +1,162 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-field);
+  font-weight: var(--fw-semibold);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  position: relative;
+  /* Анимируем только transform и opacity: всё остальное дёргается на слабых
+     устройствах, а Mini App открывают на чём угодно (docs/prototype.md). */
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* --- Накладка наведения ----------------------------------------------------
+   Отдельный слой с анимацией прозрачности: так наведение не подменяет
+   фирменный градиент другим цветом и не вызывает перерисовку раскладки. */
+.button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.button:hover:not(:disabled)::after {
+  opacity: 1;
+}
+
+/* --- Размеры --------------------------------------------------------------- */
+.sm {
+  height: var(--control-sm);
+  padding: 0 var(--space-16);
+  font-size: var(--fs-caption);
+}
+.md {
+  height: var(--control-md);
+  padding: 0 var(--space-20);
+  font-size: var(--fs-body);
+}
+.lg {
+  height: var(--control-lg);
+  padding: 0 var(--space-24);
+  font-size: var(--fs-h2);
+}
+
+.iconOnly.sm {
+  width: var(--control-sm);
+  padding: 0;
+}
+.iconOnly.md {
+  width: var(--control-md);
+  padding: 0;
+}
+.iconOnly.lg {
+  width: var(--control-lg);
+  padding: 0;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+/* --- Варианты --------------------------------------------------------------
+   Главная кнопка — фирменный градиент. Одна на экран: именно это отличает
+   референсы от обычного дашборда (docs/design-direction.md). */
+.primary {
+  background: var(--grad-brand-ui);
+  color: var(--on-brand);
+}
+
+.primary::after {
+  background: var(--overlay-light);
+}
+
+/* Акцентная — для подтверждающего действия. Зелёный точечно (docs/brand.md). */
+.accent {
+  background: var(--grad-accent);
+  color: var(--on-accent);
+}
+
+.accent::after {
+  background: var(--overlay-dark);
+}
+
+.secondary {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--border-interactive);
+}
+
+.secondary:hover:not(:disabled) {
+  border-color: var(--text-muted);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--text);
+}
+
+.ghost:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.danger {
+  background: var(--danger);
+  color: var(--on-danger);
+}
+
+.danger::after {
+  background: var(--overlay-dark);
+}
+
+/* --- Загрузка --------------------------------------------------------------
+   Подпись остаётся на месте и прячется по видимости, а не убирается из
+   потока: иначе кнопка меняет ширину и строка прыгает. */
+.loading {
+  cursor: progress;
+}
+
+.content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+}
+
+.loadingLabel {
+  visibility: hidden;
+}
+
+.spinner {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.spinnerIcon {
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

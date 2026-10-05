@@ -1,0 +1,91 @@
+/* Уведомления. В админке анимация списков мешает оператору, но появление
+   нового элемента в очереди — исключение (docs/prototype.md), и уведомление
+   как раз такой случай. */
+
+.viewport {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  width: min(var(--width-toast), 100%);
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-raised);
+  animation: toastIn var(--dur-slow) var(--ease-out);
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+/* Тональность читается не только цветом: слева иконка, у критичных —
+   полоса по краю. */
+.icon {
+  flex-shrink: 0;
+  /* Оптическая подгонка к базовой линии первой строки, не величина сетки. */
+  margin-top: 1px;
+}
+
+.neutral .icon {
+  color: var(--text-muted);
+}
+.brand .icon {
+  color: var(--brand-text);
+}
+.success .icon {
+  color: var(--accent-text);
+}
+.warning .icon {
+  color: var(--warning);
+}
+.danger .icon {
+  color: var(--danger);
+}
+
+.warning {
+  box-shadow: var(--shadow-raised), inset var(--bar-width) 0 0 var(--warning);
+}
+
+.danger {
+  box-shadow: var(--shadow-raised), inset var(--bar-width) 0 0 var(--danger);
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.title {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-dense);
+}
+
+.text {
+  font-size: var(--fs-caption);
+  line-height: var(--lh-dense);
+  color: var(--text-muted);
+}
+
+.actions {
+  margin-top: var(--space-8);
+  display: flex;
+  gap: var(--space-8);
+}
+
+.close {
+  flex-shrink: 0;
+}

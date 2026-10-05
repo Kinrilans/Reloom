@@ -1,0 +1,123 @@
+/* Лицевая сторона карты — главный визуальный герой приложения
+   (docs/design-direction.md, разбор 06-vaulta-card-art). Здесь фирменный
+   градиент с зерном работает в полную силу: это то, что пользователь
+   показывает другим. */
+
+/* ВАЖНО про отступы.
+
+   Этот класс НЕ задаёт padding, хотя визуально он здесь и нужен. Причина:
+   padding на этом же узле задаёт и базовая карточка (`Card`, вариант
+   плотности flush). Оба селектора одноклассовые, специфичность у них
+   одинаковая, и победитель определяется исключительно порядком подключения
+   таблиц стилей. Next подключает CSS модулей по мере надобности маршрута:
+   стоит уйти на экран, где карты нет, и вернуться — порядок меняется,
+   padding базовой карточки перебивает наш, и содержимое прилипает к краям.
+   Состояние залипает, потому что обратно порядок не возвращается.
+
+   Поэтому отступ вынесен на внутреннюю обёртку: два правила больше не
+   спорят за один узел, и порядок таблиц ни на что не влияет. */
+.face {
+  aspect-ratio: 1.586;
+  width: 100%;
+  text-align: start;
+  cursor: pointer;
+  /* Содержимое никогда не раздвигает карту: длинная сумма или запасной
+     шрифт, пока не загрузился Onest, иначе увеличивают минимальную ширину,
+     карта перестаёт сжиматься и вылезает за поля экрана. */
+  min-width: 0;
+  overflow: hidden;
+}
+
+.inner {
+  /* Лежит поверх слоя зерна. */
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: var(--space-20);
+  min-width: 0;
+}
+
+.top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.badge {
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-medium);
+  padding: var(--space-4) var(--space-12);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--on-brand) 18%, transparent);
+  color: var(--on-brand);
+}
+
+.bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--fs-micro);
+  color: color-mix(in srgb, var(--on-brand) 70%, transparent);
+  margin-bottom: var(--space-4);
+}
+
+.last4 {
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.08em;
+  color: var(--on-brand);
+  margin-top: var(--space-8);
+}
+
+.expires {
+  font-size: var(--fs-micro);
+  color: color-mix(in srgb, var(--on-brand) 70%, transparent);
+  white-space: nowrap;
+}
+
+/* Неактивная карта приглушается и получает подпись статуса: состояние не
+   передаётся одним лишь приглушением. */
+.inactive {
+  opacity: 0.55;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-medium);
+  color: var(--on-brand);
+}
+
+/* Отменённая карта — плоская серая поверхность: фирменный градиент на
+   закрытой карте выглядел бы как действующая. */
+.canceled {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.canceled .last4,
+.canceled .status {
+  color: var(--text-muted);
+}
+
+.canceled .label,
+.canceled .expires {
+  color: var(--text-muted);
+}
+
+.canceled .badge {
+  background: var(--surface);
+  color: var(--text-muted);
+}

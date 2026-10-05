@@ -1,0 +1,233 @@
+/* Общий слой для всех полей: подпись, контрол, подсказка, ошибка. */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.label {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+}
+
+.required {
+  color: var(--danger);
+  margin-inline-start: var(--space-4);
+}
+
+/* --- Контрол ---------------------------------------------------------------
+   Поле заливается поверхностью, а не рисуется одной обводкой: на тёмном фоне
+   глубина делается перепадом светлоты (docs/brand.md), и заливка остаётся
+   различимой даже там, где тонкая граница почти не видна. */
+.control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: var(--control-md);
+  padding: 0 var(--space-16);
+  background: var(--surface-2);
+  border: var(--border-width) solid var(--border-interactive);
+  border-radius: var(--radius-field);
+  color: var(--text);
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.control:hover:not(.disabled):not(.readOnly) {
+  border-color: var(--text-muted);
+}
+
+/* Фокус ловится на обёртке, чтобы обводка охватывала поле целиком вместе
+   с иконками, а не только текстовый ввод. */
+.control:focus-within {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
+  border-color: transparent;
+}
+
+[data-theme="light"] .control:focus-within {
+  outline-color: var(--brand-dark);
+}
+
+.control.invalid {
+  border-color: var(--danger);
+}
+
+.control.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.control.readOnly {
+  background: transparent;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: var(--fs-body);
+  color: var(--text);
+}
+
+.input:focus {
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input:disabled {
+  cursor: not-allowed;
+}
+
+.textarea {
+  min-height: calc(var(--control-md) * 2 + var(--space-8));
+  padding: var(--space-12) 0;
+  resize: vertical;
+  line-height: var(--lh-body);
+}
+
+.adornment {
+  display: inline-flex;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* Поле с суммой: цифры моноширинные и выровнены вправо, как в таблицах. */
+.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Подсказка и ошибка ----------------------------------------------------
+   Состояние не передаётся одним цветом: у ошибки есть иконка и текст
+   (docs/prototype.md). */
+.hint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  font-size: var(--fs-caption);
+  line-height: var(--lh-dense);
+  color: var(--text-muted);
+}
+
+.hint.error {
+  color: var(--danger);
+}
+
+.hintIcon {
+  flex-shrink: 0;
+  /* Оптическая подгонка к базовой линии первой строки, не величина сетки. */
+  margin-top: 1px;
+}
+
+/* --- Флажок ----------------------------------------------------------------
+   Нативный input спрятан, но остаётся фокусируемым: рамка рисуется на
+   визуальной коробке через :has. */
+.checkboxRow {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+  cursor: pointer;
+}
+
+.checkboxRow.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.checkboxInput {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.checkboxBox {
+  flex-shrink: 0;
+  width: var(--size-toggle);
+  height: var(--size-toggle);
+  display: grid;
+  place-items: center;
+  border: var(--border-width) solid var(--border-interactive);
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+  color: var(--on-brand);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+/* Галка существует всегда, но проявляется только у отмеченного флажка:
+   так коробка не меняет размер при переключении. */
+.checkboxBox > svg {
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.checkboxRow:has(.checkboxInput:checked) .checkboxBox {
+  background: var(--grad-brand-ui);
+  border-color: transparent;
+}
+
+.checkboxRow:has(.checkboxInput:checked) .checkboxBox > svg {
+  opacity: 1;
+}
+
+.checkboxRow:has(.checkboxInput:focus-visible) .checkboxBox {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+
+[data-theme="light"] .checkboxRow:has(.checkboxInput:focus-visible) .checkboxBox {
+  outline-color: var(--brand-dark);
+}
+
+.checkboxLabel {
+  font-size: var(--fs-body);
+  line-height: var(--lh-dense);
+}
+
+/* --- Переключатель ---------------------------------------------------------- */
+.switchTrack {
+  flex-shrink: 0;
+  width: var(--control-md);
+  height: var(--control-xs);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  border: var(--border-width) solid var(--border-interactive);
+  padding: calc(var(--space-4) / 2);
+  display: flex;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+/* Бегунок и его ход выводятся из размеров дорожки, а не задаются на глаз. */
+.switchThumb {
+  width: calc(var(--control-xs) - var(--space-4) - var(--border-width) * 2);
+  height: calc(var(--control-xs) - var(--space-4) - var(--border-width) * 2);
+  border-radius: var(--radius-pill);
+  background: var(--text-muted);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.checkboxRow:has(.checkboxInput:checked) .switchTrack {
+  background: var(--grad-brand-ui);
+  border-color: transparent;
+}
+
+.checkboxRow:has(.checkboxInput:checked) .switchThumb {
+  background: var(--on-brand);
+  transform: translateX(calc(var(--control-md) - var(--control-xs)));
+}
+
+.checkboxRow:has(.checkboxInput:focus-visible) .switchTrack {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+
+[data-theme="light"] .checkboxRow:has(.checkboxInput:focus-visible) .switchTrack {
+  outline-color: var(--brand-dark);
+}

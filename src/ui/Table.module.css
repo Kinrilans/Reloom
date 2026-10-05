@@ -1,0 +1,78 @@
+/* Таблица админки: строки без линовки, мелкий шрифт, статусы пилюлями,
+   действия справа (docs/design-direction.md, разбор 01-synra-dark и
+   03-quixotic-light).
+
+   Админка плотная: оператор работает в ней часами, и лишний воздух здесь
+   означает лишнюю прокрутку. */
+
+.wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-dense);
+}
+
+.th {
+  text-align: start;
+  padding: var(--space-8) var(--space-12);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.td {
+  padding: var(--space-12);
+  border-top: var(--border-width) solid var(--border);
+  vertical-align: middle;
+}
+
+/* Первая строка без верхней границы: шапка и так отделена цветом. */
+.tbody tr:first-child .td {
+  border-top: 0;
+}
+
+.row {
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.interactive {
+  cursor: pointer;
+}
+
+.interactive:hover .td {
+  background: var(--surface-2);
+}
+
+/* Суммы — моноширинными цифрами по правому краю (docs/brand.md). */
+.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  text-align: right;
+  width: 1%;
+  white-space: nowrap;
+}
+
+.primaryCell {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-medium);
+  color: var(--text);
+}
+
+.mutedCell {
+  color: var(--text-muted);
+}
+
+/* Строка-аномалия: списание больше авторизованного, forcePosted, списание
+   без авторизации. Помечается не только цветом — слева появляется полоса. */
+.flagged .td:first-child {
+  box-shadow: inset var(--bar-width) 0 0 var(--warning);
+}

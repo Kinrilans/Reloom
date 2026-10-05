@@ -1,0 +1,83 @@
+/* Модальное окно на нативном <dialog>: Esc, фокус-ловушка и инертность
+   фона достаются от браузера, а не пишутся руками. */
+
+.dialog {
+  padding: 0;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-overlay);
+  width: min(var(--width-modal), calc(100vw - var(--space-32)));
+  max-height: calc(100vh - var(--space-64));
+  overflow: hidden;
+}
+
+.dialog::backdrop {
+  background: var(--scrim);
+}
+
+/* Анимируем только transform и opacity (docs/prototype.md). */
+.dialog[open] {
+  animation: modalIn var(--dur-slow) var(--ease-out);
+}
+
+.dialog[open]::backdrop {
+  animation: backdropIn var(--dur-slow) var(--ease-out);
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-8)) scale(0.98);
+  }
+}
+
+@keyframes backdropIn {
+  from {
+    opacity: 0;
+  }
+}
+
+.inner {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - var(--space-64));
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-16);
+  padding: var(--space-20) var(--space-20) var(--space-12);
+}
+
+.title {
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-heading);
+}
+
+.body {
+  padding: 0 var(--space-20) var(--space-20);
+  overflow-y: auto;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-12);
+  padding: var(--space-16) var(--space-20);
+  border-top: var(--border-width) solid var(--border);
+  background: var(--surface);
+}
+
+/* Необратимое действие подтверждается вводом значения, а не просто «ОК»
+   (docs/flows-admin.md). Поле подтверждения отделяется от текста. */
+.confirm {
+  margin-top: var(--space-16);
+}

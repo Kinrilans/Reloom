@@ -1,0 +1,76 @@
+/* Деньги на экране.
+
+   Формат один во всех языках: 1 234.56 USD. Разделители НЕ локализуются —
+   «1,234.56» и «1.234,56» читаются противоположно, и в финансовом интерфейсе
+   такой риск не нужен (docs/i18n.md).
+
+   Цифры моноширинные, в списках и таблицах выравниваются по правому краю.
+   Зелёный для сумм не используется: цветом помечаются изменения состояния,
+   не значения (docs/brand.md). */
+
+.amount {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25em;
+}
+
+/* Приглушённая дробная часть — приём из референсов 05-vaulta-home и
+   02-card-light. Тот же размер, другой цвет: мельче делать нельзя, иначе
+   ломается выравнивание моноширинных цифр по колонке. */
+.fraction {
+  color: var(--text-muted);
+}
+
+.currency {
+  color: var(--text-muted);
+  font-size: 0.55em;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.02em;
+}
+
+/* Отменённая или отклонённая операция. Зачёркивание, а не только цвет:
+   иначе отличие пропадёт в чёрно-белой распечатке и у части людей. */
+.struck {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.struck .fraction,
+.struck .currency {
+  color: inherit;
+}
+
+/* --- Размеры ---------------------------------------------------------------- */
+.display {
+  font-size: var(--fs-display);
+  line-height: var(--lh-display);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.02em;
+}
+
+.kpi {
+  font-size: var(--fs-kpi);
+  line-height: var(--lh-title);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.01em;
+}
+
+.body {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-medium);
+}
+
+.caption {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-medium);
+}
+
+/* На фирменной плашке подпись валюты и дробная часть берут цвет плашки:
+   --text-muted там не читается. */
+.onBrand .fraction,
+.onBrand .currency {
+  color: color-mix(in srgb, var(--on-brand) 70%, transparent);
+}

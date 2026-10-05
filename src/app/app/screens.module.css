@@ -1,0 +1,294 @@
+/* Общие блоки внутренних экранов приложения. */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.stackTight {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.title {
+  font-size: var(--fs-title);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-title);
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-semibold);
+}
+
+.text {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+}
+
+.note {
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+}
+
+/* Кнопка, прижатая к низу экрана: основное действие шага мастера. */
+.footer {
+  margin-top: auto;
+  padding-top: var(--space-24);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+/* --- Строки «ключ — значение» ----------------------------------------------- */
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-16);
+  font-size: var(--fs-body);
+}
+
+.rowLabel {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.rowValue {
+  text-align: end;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Итоговая строка расчёта выделяется разделителем, а не цветом: зелёный
+   для сумм не используется. */
+.rowTotal {
+  padding-top: var(--space-12);
+  border-top: var(--border-width) solid var(--border);
+  font-weight: var(--fw-semibold);
+}
+
+/* --- Пара плиток «доступно / потрачено» -------------------------------------
+   Приём из референса 03-orb-wallet. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-12);
+}
+
+.tileLabel {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+  margin-bottom: var(--space-4);
+}
+
+/* --- Список действий над картой --------------------------------------------- */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.actionRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  width: 100%;
+  min-height: var(--control-md);
+  padding: var(--space-8) var(--space-12);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-field);
+  color: var(--text);
+  font-size: var(--fs-body);
+  text-align: start;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.actionRow:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.actionRow:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.actionIcon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.actionLabel {
+  flex: 1;
+  min-width: 0;
+}
+
+.actionDanger {
+  color: var(--danger);
+}
+
+.actionDanger .actionIcon {
+  color: var(--danger);
+}
+
+/* --- Адрес пополнения -------------------------------------------------------- */
+.qr {
+  display: grid;
+  place-items: center;
+  padding: var(--space-16);
+  background: var(--surface-2);
+  border-radius: var(--radius-card);
+}
+
+/* Адрес кошелька не переводится и не переносится по словам — только
+   целиком, моноширинно, чтобы его можно было сверить символ за символом. */
+.address {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+
+/* Сеть и монета — крупно и заметно: перевод в другой сети означает
+   потерянные деньги (docs/flows-user.md). */
+.networkBig {
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-semibold);
+}
+
+/* --- Реквизиты карты ---------------------------------------------------------- */
+.secretValue {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-h1);
+  letter-spacing: 0.06em;
+}
+
+.countdown {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+/* --- Шаги заявки --------------------------------------------------------------
+   Отметки времени, а не прогресс-бар: процесс ручной, и индикатор,
+   имитирующий автоматику, врал бы про сроки. */
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.step {
+  display: flex;
+  gap: var(--space-12);
+  align-items: flex-start;
+}
+
+.stepMark {
+  flex-shrink: 0;
+  width: var(--size-toggle);
+  height: var(--size-toggle);
+  border-radius: var(--radius-pill);
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.stepDone {
+  background: var(--success-soft);
+  color: var(--accent-text);
+}
+
+.stepBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.stepTitle {
+  font-size: var(--fs-body);
+}
+
+.stepMeta {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+/* --- Выбор варианта (куда переносить остаток) --------------------------------- */
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  border: var(--border-width) solid var(--border-interactive);
+  border-radius: var(--radius-card);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.choice:hover {
+  border-color: var(--text-muted);
+}
+
+.choiceSelected {
+  border-color: var(--brand-text);
+  background: var(--brand-soft);
+}
+
+.choiceInput {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.choiceMark {
+  flex-shrink: 0;
+  width: var(--size-toggle);
+  height: var(--size-toggle);
+  border-radius: var(--radius-pill);
+  border: var(--border-width) solid var(--border-interactive);
+  display: grid;
+  place-items: center;
+  margin-top: 1px;
+}
+
+.choiceSelected .choiceMark {
+  border-color: var(--brand-text);
+  color: var(--brand-text);
+}
+
+.choiceBody {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-dense);
+}
+
+/* Название мерчанта в чеке: обычный кегль, не заголовок. Приходит сырым
+   (SQ *COFFEE SHOP 4411) и не переводится никогда. */
+.merchant {
+  font-size: var(--fs-body);
+  line-height: var(--lh-dense);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}

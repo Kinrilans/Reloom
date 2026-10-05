@@ -1,0 +1,27 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+
+/**
+ * Открыть экран сразу в нужном состоянии: `/app/issue?state=failed`.
+ *
+ * Нужно каталогу состояний, чтобы редкие экраны — сбой выпуска, зависший
+ * перевод, просроченный код — можно было показать, не воспроизводя сбой.
+ * В интерфейсе этого крючка не видно: ни одной кнопки «показать ошибку»
+ * в рабочих экранах нет, иначе руководство приняло бы её за функцию.
+ *
+ * Читается после монтирования, а не при отрисовке: на сервере параметра
+ * ещё нет, и разметка разъехалась бы с клиентской.
+ *
+ * Полноценная панель переключения состояний — этап П3 (docs/prototype.md).
+ */
+export function useDemoState(): string | null {
+  const [state, setState] = useState<string | null>(null)
+
+  useEffect(() => {
+    const value = new URLSearchParams(window.location.search).get('state')
+    if (value) setState(value)
+  }, [])
+
+  return state
+}

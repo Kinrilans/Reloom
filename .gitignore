@@ -26,3 +26,8 @@ Thumbs.db
 
 # Референсы оставляем в репозитории — они нужны для работы
 !design/references/*
+
+# Next.js
+.next/
+next-env.d.ts
+*.tsbuildinfo

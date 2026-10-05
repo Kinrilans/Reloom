@@ -1,0 +1,83 @@
+/* Статусы пилюлями, как в референсах админки.
+
+   Ни одно состояние не передаётся только цветом (docs/prototype.md):
+   у пилюли всегда есть точка или иконка плюс подпись. Человек с нарушением
+   цветовосприятия и чёрно-белая распечатка должны читаться одинаково. */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  height: var(--control-xs);
+  padding: 0 var(--space-12);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-medium);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.dot {
+  width: var(--size-dot);
+  height: var(--size-dot);
+  border-radius: var(--radius-pill);
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.icon {
+  flex-shrink: 0;
+  margin-inline-start: calc(var(--space-4) * -1);
+}
+
+/* --- Тональности, мягкая заливка ------------------------------------------- */
+.neutral {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.brand {
+  background: var(--brand-soft);
+  color: var(--brand-text);
+}
+
+.success {
+  background: var(--success-soft);
+  color: var(--accent-text);
+}
+
+.warning {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* --- Плотная заливка: для единичных критических отметок --------------------- */
+.solid.neutral {
+  background: var(--text-muted);
+  color: var(--bg);
+}
+
+.solid.brand {
+  background: var(--grad-brand-ui);
+  color: var(--on-brand);
+}
+
+.solid.success {
+  background: var(--success);
+  color: var(--on-success);
+}
+
+.solid.warning {
+  background: var(--warning);
+  color: var(--on-warning);
+}
+
+.solid.danger {
+  background: var(--danger);
+  color: var(--on-danger);
+}

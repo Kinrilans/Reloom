@@ -1,0 +1,90 @@
+/* Состояния загрузки, пустоты и ошибки.
+
+   Для каждого списка спроектировано: пусто, загрузка, ошибка, нет
+   результатов по фильтру (docs/flows-admin.md). Состояние без следующего
+   шага — недоделанное состояние (docs/states-user.md). */
+
+/* --- Скелет ---------------------------------------------------------------
+   Пульсирует прозрачностью, а не сдвигом фона: анимация background-position
+   вызывает перерисовку и дёргается на слабых устройствах. */
+.skeleton {
+  background: var(--surface-2);
+  border-radius: var(--radius-field);
+  animation: pulse 1.4s var(--ease-in-out) infinite;
+}
+
+.skeletonText {
+  height: var(--space-12);
+  border-radius: var(--radius-pill);
+}
+
+.skeletonCircle {
+  border-radius: var(--radius-pill);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.skeletonRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-8) 0;
+}
+
+.skeletonBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+/* --- Пустое состояние и ошибка --------------------------------------------- */
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-12);
+  padding: var(--space-48) var(--space-24);
+}
+
+.stateIcon {
+  width: var(--size-state-icon);
+  height: var(--size-state-icon);
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  margin-bottom: var(--space-4);
+}
+
+.stateIcon.danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.stateTitle {
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-heading);
+}
+
+.stateText {
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  max-width: 38ch;
+}
+
+.stateAction {
+  margin-top: var(--space-8);
+}

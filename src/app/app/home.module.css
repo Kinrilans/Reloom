@@ -1,0 +1,144 @@
+/* Главный экран.
+
+   Последовательность из референсов: приветствие -> крупный баланс -> карты
+   -> ряд быстрых действий -> последние операции. Она повторяется во всех
+   шести референсах приложения и читается без обучения
+   (docs/design-direction.md). */
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-8) 0 var(--space-4);
+  /* Распорка от разъезжающейся вёрстки: без неё flex-элемент не сжимается
+     ниже своей минимальной ширины и выталкивает содержимое за поля. */
+  min-width: 0;
+}
+
+.balanceLabel {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+/* Доступно к тратам показывается, только когда оно меньше баланса. */
+.spendable {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+  margin-top: var(--space-4);
+}
+
+/* Горизонтальная лента карт: показана главная, справа торчит край
+   следующей — это и говорит, что ленту можно листать.
+
+   Лента раздвинута отрицательными полями до краёв экрана, чтобы край
+   следующей карты доходил до самой кромки, а не обрывался на отступе.
+   Боковой отступ возвращается внутренним padding, а scroll-padding не даёт
+   привязке прокрутки этот отступ съесть. */
+.cards {
+  display: flex;
+  gap: var(--space-12);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  margin-inline: calc(var(--space-16) * -1);
+  padding-inline: var(--space-16);
+  scroll-padding-inline: var(--space-16);
+  /* Полоса прокрутки на ленте лишняя: жест очевиден по торчащему краю. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.cards::-webkit-scrollbar {
+  display: none;
+}
+
+.cardSlide {
+  flex: 0 0 88%;
+  /* Без этого карта не сожмётся ниже минимальной ширины содержимого
+     и вылезет за пределы ленты. */
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+/* Одна карта — листать нечего, занимает всю ширину. */
+.cardSlideSingle {
+  flex-basis: 100%;
+}
+
+/* Три действия — ряд кружков с подписями. Сетку 4x2 из референсов не берём:
+   у нас три пункта, и сетка на восемь ячеек была бы наполовину пустой. */
+.actions {
+  display: flex;
+  justify-content: space-around;
+  gap: var(--space-8);
+  padding: var(--space-4) 0;
+}
+
+.action {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+  background: none;
+  border: 0;
+  padding: var(--space-8) var(--space-4);
+  color: var(--text);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-medium);
+  text-align: center;
+  cursor: pointer;
+  border-radius: var(--radius-field);
+  text-decoration: none;
+}
+
+.action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.actionIcon {
+  width: var(--control-md);
+  height: var(--control-md);
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  border: var(--border-width) solid var(--border-interactive);
+  color: var(--text);
+}
+
+.action:hover:not(:disabled) .actionIcon {
+  border-color: var(--text-muted);
+}
+
+/* Пояснение под неактивным действием: кнопку не прячем, иначе человек
+   будет её искать и писать в поддержку (docs/states-user.md, Б-3). */
+.actionNote {
+  font-size: var(--fs-micro);
+  line-height: var(--lh-dense);
+  color: var(--text-muted);
+  text-align: center;
+  padding: 0 var(--space-8);
+}
+
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.sectionTitle {
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-semibold);
+}
+
+/* Действия в карточке «баланс есть, карт ещё нет». */
+.inlineActions {
+  display: flex;
+  gap: var(--space-12);
+  margin-top: var(--space-16);
+}

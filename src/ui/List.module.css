@@ -1,0 +1,100 @@
+/* Список: иконка слева, название и подпись в две строки, сумма справа.
+   Разделителей нет — строки разделены воздухом (docs/design-direction.md). */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.roomy {
+  gap: var(--space-12);
+}
+
+.dense {
+  gap: var(--space-8);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-8);
+  margin: calc(var(--space-8) * -1);
+  border-radius: var(--radius-field);
+  text-align: start;
+  background: none;
+  border: 0;
+  width: calc(100% + var(--space-16));
+  color: inherit;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.interactive {
+  cursor: pointer;
+}
+
+.interactive:hover {
+  background: var(--surface-2);
+}
+
+.media {
+  flex-shrink: 0;
+  width: var(--size-avatar);
+  height: var(--size-avatar);
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Название мерчанта приходит сырым (SQ *COFFEE SHOP 4411) и может быть
+   длинным — обрезаем многоточием, а не переносим в три строки. */
+.title {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-dense);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtitle {
+  font-size: var(--fs-caption);
+  line-height: var(--lh-dense);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trailing {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+
+.trailingNote {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+/* Отменённая или отклонённая операция: сумма зачёркнута, чтобы отличие
+   читалось не только цветом. */
+.struck {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
