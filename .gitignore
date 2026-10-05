@@ -1,0 +1,25 @@
+# Секреты — никогда не коммитить
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Зависимости и сборка
+node_modules/
+.next/
+dist/
+build/
+coverage/
+
+# База и дампы
+*.sql
+*.dump
+pgdata/
+
+# Системное
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
