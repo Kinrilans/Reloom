@@ -23,3 +23,6 @@ Thumbs.db
 *.log
 .vscode/
 .idea/
+
+# Референсы оставляем в репозитории — они нужны для работы
+!design/references/*
