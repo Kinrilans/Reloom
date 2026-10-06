@@ -11,7 +11,11 @@ import styles from './AppShell.module.css'
 const NAV = [
   { href: '/app', labelKey: 'nav.home', icon: CreditCard },
   { href: '/app/history', labelKey: 'nav.history', icon: Receipt },
-  { href: '/app/settings', labelKey: 'nav.settings', icon: Settings },
+  /* На «Настройках» висит тихий вызов панели показа: три быстрых нажатия.
+     Нужен для телефона, где клавиатуры нет (src/demo/useDemoPanel.ts).
+     Место выбрано нарочно неслучайным — промахнуться тремя подряд
+     попаданиями именно сюда почти невозможно. */
+  { href: '/app/settings', labelKey: 'nav.settings', icon: Settings, demoTrigger: true },
 ]
 
 export interface AppShellProps {
@@ -66,6 +70,7 @@ export function AppShell({ title, back = false, nav = false, action, children }:
                     .filter(Boolean)
                     .join(' ')}
                   aria-current={active ? 'page' : undefined}
+                  data-demo-trigger={item.demoTrigger ? '' : undefined}
                 >
                   <Icon size={20} strokeWidth={active ? 2.25 : 1.75} aria-hidden />
                   {t(item.labelKey)}

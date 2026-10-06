@@ -1,0 +1,356 @@
+/* Каркас админки.
+
+   Трёхколоночная сетка из референса 01-synra-dark: боковое меню с
+   группами, основная область, правая колонка виджетов. Админка плотная:
+   оператор работает в ней часами, и лишний воздух здесь означает лишнюю
+   прокрутку (docs/design-direction.md).
+
+   Бренд присутствует сдержанно: фирменные цвета в акцентах и состояниях,
+   фирменная типографика, но плоские поверхности и минимум анимации.
+   Градиентных подсветок за таблицами нет — читаемость важнее. */
+
+.layout {
+  display: grid;
+  grid-template-columns: var(--width-sidebar) minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+/* --- Боковое меню ------------------------------------------------------------ */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+  padding: var(--space-20) var(--space-16);
+  border-right: var(--border-width) solid var(--border);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  color: var(--text);
+  text-decoration: none;
+  padding: 0 var(--space-8);
+}
+
+/* Карточка текущего оператора сверху, как в референсе. Она же вход в
+   профиль, поэтому это кнопка. */
+.operator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-12);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  min-width: 0;
+  width: 100%;
+  color: var(--text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.operator:hover {
+  border-color: var(--border-interactive);
+}
+
+.operatorChevron {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.operatorAvatar {
+  flex-shrink: 0;
+  width: var(--control-sm);
+  height: var(--control-sm);
+  border-radius: var(--radius-pill);
+  display: grid;
+  place-items: center;
+  background: var(--grad-brand-ui);
+  color: var(--on-brand);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+}
+
+.operatorBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.operatorName {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operatorRole {
+  font-size: var(--fs-micro);
+  color: var(--text-muted);
+}
+
+.navGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.navGroupTitle {
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0 var(--space-12) var(--space-4);
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-field);
+  color: var(--text-muted);
+  font-size: var(--fs-caption);
+  text-decoration: none;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.navItem:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* Активный пункт подсвечен заливкой — и подписью плотнее, чтобы состояние
+   читалось не только цветом. */
+.navActive {
+  background: var(--brand-soft);
+  color: var(--brand-text);
+  font-weight: var(--fw-semibold);
+}
+
+.navCount {
+  margin-inline-start: auto;
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  padding: 0 var(--space-8);
+  height: var(--size-toggle);
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.navActive .navCount {
+  background: var(--brand-text);
+  color: var(--on-brand);
+}
+
+/* Выход прижат к низу панели: между ним и разделами всегда есть воздух,
+   сколько бы разделов ни было. */
+.signOut {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-8) var(--space-12);
+  border: 0;
+  border-radius: var(--radius-field);
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--fs-caption);
+  text-align: start;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.signOut:hover {
+  background: var(--surface-2);
+  color: var(--danger);
+}
+
+/* --- Основная область --------------------------------------------------------- */
+
+.main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+  padding: var(--space-12) var(--space-24);
+  border-bottom: var(--border-width) solid var(--border);
+  background: var(--bg);
+}
+
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+  min-width: 0;
+}
+
+.crumbCurrent {
+  color: var(--text);
+  font-weight: var(--fw-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search {
+  flex: 1;
+  max-width: var(--width-search);
+  margin-inline: auto;
+}
+
+.topbarActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  flex-shrink: 0;
+}
+
+/* Переключатель компании и языка — в шапке, рядом друг с другом. */
+.switcher {
+  min-width: var(--width-field-md);
+}
+
+.switcherNarrow {
+  min-width: var(--width-field-sm);
+}
+
+.content {
+  padding: var(--space-24);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+  min-width: 0;
+}
+
+.pageHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
+
+.pageTitle {
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-heading);
+}
+
+.pageNote {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+  margin-top: var(--space-4);
+  max-width: 76ch;
+  line-height: var(--lh-body);
+}
+
+/* Кнопка меню есть только на узком экране. Показом управляет обёртка:
+   своё display кнопка задаёт сама. */
+.menuButton {
+  display: none;
+  flex-shrink: 0;
+}
+
+/* Узкий экран: меню выезжает поверх содержимого. Админка десктопная, и
+   одиннадцать пунктов, развёрнутых сверху, увели бы работу за пределы
+   экрана; прототип при этом открывают и с телефона.
+
+   Точки перелома заданы числами: медиазапросы не умеют читать
+   пользовательские свойства — ограничение CSS, а не отход от токенов. */
+@media (max-width: 920px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .menuButton {
+    display: inline-flex;
+  }
+
+  .sidebar {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    z-index: 30;
+    width: var(--width-sidebar);
+    max-width: 86vw;
+    background: var(--bg);
+    box-shadow: var(--shadow-overlay);
+    transform: translateX(-101%);
+    transition: transform var(--dur-base) var(--ease-out);
+  }
+
+  .sidebarOpen {
+    transform: translateX(0);
+  }
+
+  .scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: var(--scrim);
+  }
+
+  /* Крошки и поиск уходят: заголовок раздела и так стоит под шапкой,
+     а поиск на телефоне занял бы её целиком. */
+  .crumbs,
+  .search {
+    display: none;
+  }
+
+  .topbar {
+    gap: var(--space-8);
+    padding: var(--space-12) var(--space-16);
+  }
+
+  /* Переключатели ужимаются под ширину телефона: компания тянется,
+     язык остаётся узким. */
+  .switcher {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .switcherNarrow {
+    min-width: 0;
+    flex-shrink: 1;
+  }
+
+  .topbarActions {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .content {
+    padding: var(--space-16);
+    gap: var(--space-16);
+  }
+
+  .pageHead {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

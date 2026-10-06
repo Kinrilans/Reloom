@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import { I18nProvider, PROTOTYPE_LOCALE } from '@/i18n'
 import type { Locale } from '@/i18n'
 import { StoreProvider } from '@/fixtures/store'
+import { AppDemoPanel } from '@/demo/AppDemoPanel'
 
 /** То немногое, что нам нужно от Telegram Mini App. Полного SDK в прототипе
  *  нет: настоящей авторизации и initData здесь тоже нет. */
@@ -52,7 +53,12 @@ export function Providers({ children, locale }: { children: ReactNode; locale?: 
   useTelegramTheme()
   return (
     <I18nProvider initialLocale={locale ?? PROTOTYPE_LOCALE}>
-      <StoreProvider>{children}</StoreProvider>
+      <StoreProvider>
+        {children}
+        {/* Панель показа (П3). Скрытая: вызывается сочетанием клавиш,
+            на телефоне — тройным нажатием на логотип. */}
+        <AppDemoPanel />
+      </StoreProvider>
     </I18nProvider>
   )
 }

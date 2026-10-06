@@ -1,9 +1,48 @@
 'use client'
 
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { Check, ChevronDown, CircleAlert } from 'lucide-react'
+import { useI18n } from '@/i18n'
 import fieldStyles from './Field.module.css'
 import styles from './Select.module.css'
+
+/** Положение списка: замер поля, из которого он раскрывается.
+
+    Фиксированные координаты вместо привязки к полю — чтобы список не
+    обрезался прокруткой окна или боковой панели. Величины геометрические,
+    в CSS их не выразить, поэтому они уезжают на элемент переменными. */
+export interface Placement {
+  up: boolean
+  style: CSSProperties
+}
+
+const GAP = 4
+/** Оценка высоты раскрытого списка: шесть строк плюс отступы. Нужна
+    только чтобы выбрать сторону раскрытия, поэтому приблизительной
+    достаточно — точную высоту до отрисовки всё равно не узнать. */
+const MAX_LIST_HEIGHT = 6 * 36 + 16
+
+export function placeBelow(trigger: HTMLElement | null): Placement | null {
+  if (!trigger) return null
+  const rect = trigger.getBoundingClientRect()
+  const roomBelow = window.innerHeight - rect.bottom
+  const up = roomBelow < MAX_LIST_HEIGHT && rect.top > roomBelow
+
+  // Пользовательские свойства в типе CSSProperties не описаны, поэтому
+  // собираем их как обычную карту строк и приводим один раз.
+  const vars: Record<string, string> = {
+    '--popup-left': `${rect.left}px`,
+    '--popup-width': `${rect.width}px`,
+  }
+  if (up) {
+    vars['--popup-bottom'] = `${window.innerHeight - rect.top + GAP}px`
+  } else {
+    vars['--popup-top'] = `${rect.bottom + GAP}px`
+  }
+
+  return { up, style: vars as CSSProperties }
+}
 
 export interface SelectOption {
   value: string
@@ -42,18 +81,19 @@ export function Select({
   label,
   hint,
   error,
-  placeholder = 'Выберите значение',
+  placeholder,
   disabled,
   required,
   name,
   className,
 }: SelectProps) {
+  const { t } = useI18n()
   const id = useId()
   const triggerId = `${id}-trigger`
   const listId = `${id}-list`
 
   const [open, setOpen] = useState(false)
-  const [dropUp, setDropUp] = useState(false)
+  const [placement, setPlacement] = useState<Placement | null>(null)
   const [internal, setInternal] = useState<string | undefined>(defaultValue)
   const [activeIndex, setActiveIndex] = useState(-1)
 
@@ -102,14 +142,39 @@ export function Select({
     }
   }, [open, close])
 
-  // Если снизу не хватает места — раскрываем вверх. Считаем до отрисовки,
-  // чтобы список не успел мигнуть не с той стороны.
+  // Считаем до отрисовки, чтобы список не успел мигнуть не на том месте.
   useLayoutEffect(() => {
-    if (!open || !triggerRef.current) return
-    const rect = triggerRef.current.getBoundingClientRect()
-    const needed = Math.min(options.length, 6) * 36 + 16
-    setDropUp(rect.bottom + needed > window.innerHeight && rect.top > needed)
-  }, [open, options.length])
+    if (!open) return
+    setPlacement(placeBelow(triggerRef.current))
+  }, [open])
+
+  // Прокрутка уводит поле, а список стоит на фиксированных координатах,
+  // поэтому его пересчитываем. Слушаем в фазе перехвата: прокручиваться
+  // может любой предок — окно, боковая панель, страница.
+  //
+  // Именно пересчитываем, а не закрываем: внутри модального окна прокрутка
+  // случается сама, хотя бы от подведения поля в зону видимости, и
+  // закрытие на каждую выглядело бы как «список не открывается».
+  useEffect(() => {
+    if (!open) return
+    function onMove() {
+      const trigger = triggerRef.current
+      if (!trigger) return
+      const rect = trigger.getBoundingClientRect()
+      // Поле ушло за край окна — держать список не за что.
+      if (rect.bottom < 0 || rect.top > window.innerHeight) {
+        close()
+        return
+      }
+      setPlacement(placeBelow(trigger))
+    }
+    window.addEventListener('scroll', onMove, true)
+    window.addEventListener('resize', onMove)
+    return () => {
+      window.removeEventListener('scroll', onMove, true)
+      window.removeEventListener('resize', onMove)
+    }
+  }, [open, close])
 
   // Держим подсвеченный пункт в зоне видимости при навигации стрелками.
   useEffect(() => {
@@ -221,7 +286,7 @@ export function Select({
               .filter(Boolean)
               .join(' ')}
           >
-            {selectedOption?.label ?? placeholder}
+            {selectedOption?.label ?? placeholder ?? t('ui.selectValue')}
           </span>
           <ChevronDown
             className={[styles.chevron, open ? styles.chevronOpen : null].filter(Boolean).join(' ')}
@@ -235,12 +300,21 @@ export function Select({
           <ul
             id={listId}
             ref={listRef}
-            className={[styles.popup, dropUp ? styles.popupUp : null].filter(Boolean).join(' ')}
+            className={[styles.popup, placement?.up ? styles.popupUp : null]
+              .filter(Boolean)
+              .join(' ')}
+            style={placement?.style}
             role="listbox"
             aria-labelledby={triggerId}
+            /* Не отдаём фокус списку: пункт не фокусируемый, и браузер
+               перевёл бы фокус на ближайшего предка — внутри модального
+               окна это сам диалог. Уход фокуса закрывает список, и клик
+               тогда приземляется уже в пустоту: выбор не срабатывает.
+               Фокус остаётся на поле, клавиатура продолжает работать. */
+            onMouseDown={(e) => e.preventDefault()}
           >
             {options.length === 0 ? (
-              <li className={styles.empty}>Нет доступных вариантов</li>
+              <li className={styles.empty}>{t('ui.noOptions')}</li>
             ) : (
               options.map((option, i) => {
                 const isSelected = option.value === selected

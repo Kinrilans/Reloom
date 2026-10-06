@@ -1,0 +1,106 @@
+/* Боковая панель справа. Нативный <dialog> центрируется сам, поэтому
+   положение задаётся явно: прижата к правому краю, во всю высоту. */
+
+.dialog {
+  margin: 0 0 0 auto;
+  max-width: none;
+  max-height: none;
+  width: min(var(--width-drawer), 100vw);
+  height: 100vh;
+  padding: 0;
+  border: 0;
+  border-left: var(--border-width) solid var(--border);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-overlay);
+  overflow: hidden;
+}
+
+.dialog::backdrop {
+  background: var(--scrim);
+}
+
+/* Анимируем только transform и opacity (docs/prototype.md). */
+.dialog[open] {
+  animation: drawerIn var(--dur-slow) var(--ease-out);
+}
+
+.dialog[open]::backdrop {
+  animation: backdropIn var(--dur-slow) var(--ease-out);
+}
+
+@keyframes drawerIn {
+  from {
+    opacity: 0;
+    transform: translateX(var(--space-32));
+  }
+}
+
+@keyframes backdropIn {
+  from {
+    opacity: 0;
+  }
+}
+
+.inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-16);
+  padding: var(--space-20) var(--space-20) var(--space-16);
+  border-bottom: var(--border-width) solid var(--border);
+}
+
+.heading {
+  min-width: 0;
+}
+
+.title {
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-heading);
+}
+
+.subtitle {
+  margin-top: var(--space-4);
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+/* Прокручивается только содержимое: шапка и кнопки остаются на месте,
+   иначе на длинной карточке действие уезжает за край. */
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-20);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.footer {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-12);
+  padding: var(--space-16) var(--space-20);
+  border-top: var(--border-width) solid var(--border);
+  background: var(--surface);
+}
+
+/* Телефон: ширину панель и так ограничивает шириной экрана, а вот кнопки
+   в ряд на нём не помещаются — ставим их в столбик, главную сверху. */
+@media (max-width: 600px) {
+  .footer {
+    flex-direction: column-reverse;
+  }
+}

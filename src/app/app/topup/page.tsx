@@ -3,14 +3,14 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, Copy, TriangleAlert } from 'lucide-react'
-import { Amount, Badge, Button, Card, CardHeader, Input, Select, Toast } from '@/ui'
+import { Amount, Badge, Button, Card, CardHeader, Input, QrPlaceholder, Select, Toast } from '@/ui'
 import type { SelectOption } from '@/ui'
 import { formatDateTime, useI18n } from '@/i18n'
 import { useDemoState } from '@/fixtures/demoState'
 import { DEMO, NETWORKS } from '@/fixtures/scenarios'
 import { useStore } from '@/fixtures/store'
 import { AppShell } from '../AppShell'
-import { QrPlaceholder } from '../_components/QrPlaceholder'
+
 import styles from '../screens.module.css'
 
 type Step = 'network' | 'address' | 'form' | 'pending' | 'rejected'

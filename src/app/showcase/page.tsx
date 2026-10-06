@@ -1,16 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   ArrowDownLeft,
   ArrowUpRight,
   CreditCard,
   Inbox,
-  Moon,
   Search,
   Snowflake,
-  Sun,
   TriangleAlert,
   Wallet,
 } from 'lucide-react'
@@ -37,13 +35,13 @@ import {
   TR,
   Table,
   Textarea,
+  ThemeToggle,
   Toast,
   ToastViewport,
 } from '@/ui'
 import type { SelectOption } from '@/ui'
+import { I18nProvider, PROTOTYPE_LOCALE } from '@/i18n'
 import styles from './showcase.module.css'
-
-type Theme = 'dark' | 'light'
 
 /* Все данные ниже — выдуманные константы для показа компонентов.
    Денежной логики в прототипе нет: ни одна сумма здесь не вычисляется
@@ -192,27 +190,19 @@ const USERS: {
   },
 ]
 
+/* Витрина тоже живёт внутри словаря: компоненты системы берут из него свои
+   подписи — «Закрыть», «Выберите значение», подпись темы. Без провайдера
+   они бы просто не отрисовались. */
 export default function ShowcasePage() {
-  const [theme, setTheme] = useState<Theme>('dark')
+  return (
+    <I18nProvider initialLocale={PROTOTYPE_LOCALE}>
+      <Showcase />
+    </I18nProvider>
+  )
+}
+
+function Showcase() {
   const [modalOpen, setModalOpen] = useState(false)
-
-  // Тему читаем после монтирования: на сервере её ещё нет, а разметка
-  // не должна разъехаться с тем, что уже применил скрипт в layout.
-  useEffect(() => {
-    const current = document.documentElement.dataset.theme
-    if (current === 'light' || current === 'dark') setTheme(current)
-  }, [])
-
-  function toggleTheme() {
-    const next: Theme = theme === 'dark' ? 'light' : 'dark'
-    setTheme(next)
-    document.documentElement.dataset.theme = next
-    try {
-      localStorage.setItem('reloom-theme', next)
-    } catch {
-      // приватный режим или заблокированные куки — тема просто не запомнится
-    }
-  }
 
   return (
     <div className={styles.page}>
@@ -221,14 +211,7 @@ export default function ShowcasePage() {
           <Logo variant="lockup" tone="current" height={22} title="Reloom" />
           <span className={styles.topbarMeta}>Витрина компонентов · П0</span>
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={toggleTheme}
-          iconStart={theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-        >
-          {theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
-        </Button>
+        <ThemeToggle labelled size="sm" />
       </header>
 
       <main className={styles.main}>

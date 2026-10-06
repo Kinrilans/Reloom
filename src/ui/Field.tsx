@@ -2,7 +2,8 @@
 
 import { useId } from 'react'
 import type { InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react'
-import { Check, CircleAlert } from 'lucide-react'
+import { Check, CircleAlert, ImagePlus } from 'lucide-react'
+import { useI18n } from '@/i18n'
 import styles from './Field.module.css'
 
 interface FieldShellProps {
@@ -142,6 +143,68 @@ export function Checkbox({ label, disabled, className, ...rest }: CheckboxProps)
     </label>
   )
 }
+
+export interface ImageFieldProps
+  extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' | 'onChange'> {
+  label?: string
+  hint?: string
+  error?: string
+  /** Превью выбранного файла. Снаружи — временная ссылка на него. */
+  preview?: string | null
+  onPick?: (file: File | null) => void
+  /** Подпись кнопки выбора. По умолчанию — «Выбрать файл». */
+  buttonLabel?: string
+}
+
+/**
+ * Загрузка изображения с превью.
+ *
+ * Нативный input[type=file] скрыт: его кнопку нельзя оформить, а подпись
+ * у неё своя на каждом браузере и языке. Клик идёт по label, поэтому
+ * клавиатура и экранный диктор работают без обработчиков.
+ */
+export function ImageField({
+  label,
+  hint,
+  error,
+  preview,
+  onPick,
+  buttonLabel,
+  className,
+  id,
+  ...rest
+}: ImageFieldProps) {
+  const { t } = useI18n()
+  const autoId = useId()
+  const fieldId = id ?? autoId
+  return (
+    <FieldShell label={label} hint={hint} error={error} required={rest.required} htmlFor={fieldId}>
+      <div className={[styles.imageRow, className].filter(Boolean).join(' ')}>
+        <span className={styles.imagePreview}>
+          {preview ? (
+            <img className={styles.imagePreviewImg} src={preview} alt="" />
+          ) : (
+            <ImagePlus size={18} strokeWidth={1.75} aria-hidden />
+          )}
+        </span>
+        <label className={styles.imageButton} htmlFor={fieldId}>
+          {buttonLabel ?? t('ui.chooseFile')}
+        </label>
+        <input
+          id={fieldId}
+          type="file"
+          accept="image/png,image/svg+xml,image/webp"
+          className={styles.imageInput}
+          aria-invalid={error ? true : undefined}
+          onChange={(e) => onPick?.(e.target.files?.[0] ?? null)}
+          {...rest}
+        />
+      </div>
+    </FieldShell>
+  )
+}
+
+/* --------------------------------------------------------------------------- */
 
 export interface SwitchProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
   label: ReactNode

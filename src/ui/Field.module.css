@@ -231,3 +231,69 @@
 [data-theme="light"] .checkboxRow:has(.checkboxInput:focus-visible) .switchTrack {
   outline-color: var(--brand-dark);
 }
+
+/* --- Загрузка изображения -----------------------------------------------------
+   Нативную кнопку input[type=file] оформить нельзя, поэтому поле собрано
+   из превью и подписи-label: клик, фокус и клавиатура работают нативно. */
+
+.imageRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.imagePreview {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: var(--control-md);
+  height: var(--control-md);
+  border-radius: var(--radius-field);
+  background: var(--surface-2);
+  border: var(--border-width) dashed var(--border-interactive);
+  color: var(--text-muted);
+  overflow: hidden;
+}
+
+.imagePreviewImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.imageButton {
+  display: inline-flex;
+  align-items: center;
+  height: var(--control-md);
+  padding: 0 var(--space-16);
+  border-radius: var(--radius-field);
+  border: var(--border-width) solid var(--border-interactive);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+}
+
+.imageButton:hover {
+  background: var(--surface-2);
+}
+
+/* Поле остаётся в потоке, чтобы кольцо фокуса было видно на подписи. */
+.imageInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.imageRow:has(.imageInput:focus-visible) .imageButton {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+
+[data-theme="light"] .imageRow:has(.imageInput:focus-visible) .imageButton {
+  outline-color: var(--brand-dark);
+}

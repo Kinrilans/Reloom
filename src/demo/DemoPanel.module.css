@@ -1,0 +1,87 @@
+/* Панель показа. Плотный список: состояний много, а ищут их глазами
+   и быстро. */
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.groupTitle {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.groupNote {
+  font-size: var(--fs-micro);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  width: 100%;
+  padding: var(--space-12);
+  border: 0;
+  border-top: var(--border-width) solid var(--border);
+  border-radius: var(--radius-field);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-caption);
+  text-align: start;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.item:first-child {
+  border-top: 0;
+}
+
+.item:hover {
+  background: var(--surface-2);
+}
+
+/* Текущее состояние подсвечено заливкой и плотной подписью: цветом одним
+   состояние не передаётся (docs/prototype.md). */
+.itemActive {
+  background: var(--brand-soft);
+  color: var(--brand-text);
+  font-weight: var(--fw-semibold);
+}
+
+.code {
+  flex-shrink: 0;
+  /* Ширина под самый длинный код — «Б-16». Шаг сетки, а не подбор на глаз. */
+  width: var(--space-48);
+  font-size: var(--fs-micro);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.itemActive .code {
+  color: var(--brand-text);
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+}
+
+.hint {
+  font-size: var(--fs-micro);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  padding-top: var(--space-12);
+  border-top: var(--border-width) solid var(--border);
+}

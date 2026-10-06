@@ -1,0 +1,25 @@
+/* Значок монеты. Размер один и тот же с картинкой и без неё, иначе
+   строка списка подпрыгивает после загрузки изображения. */
+
+.icon {
+  flex-shrink: 0;
+  display: inline-grid;
+  place-items: center;
+  width: var(--size-asset);
+  height: var(--size-asset);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  border: var(--border-width) solid var(--border);
+  color: var(--text-muted);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.02em;
+  object-fit: cover;
+  overflow: hidden;
+}
+
+.md {
+  width: var(--size-avatar);
+  height: var(--size-avatar);
+  font-size: var(--fs-caption);
+}

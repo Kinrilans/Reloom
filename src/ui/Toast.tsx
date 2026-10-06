@@ -1,5 +1,8 @@
+'use client'
+
 import type { ReactNode } from 'react'
 import { CircleAlert, CircleCheck, Info, TriangleAlert, X } from 'lucide-react'
+import { useI18n } from '@/i18n'
 import { Button } from './Button'
 import styles from './Toast.module.css'
 
@@ -22,6 +25,7 @@ export interface ToastProps {
 }
 
 export function Toast({ tone = 'neutral', title, text, actions, onClose }: ToastProps) {
+  const { t } = useI18n()
   const Icon = ICONS[tone]
   return (
     <div className={[styles.toast, styles[tone]].join(' ')} role="status">
@@ -37,7 +41,7 @@ export function Toast({ tone = 'neutral', title, text, actions, onClose }: Toast
           variant="ghost"
           size="sm"
           iconOnly
-          aria-label="Закрыть уведомление"
+          aria-label={t('ui.closeToast')}
           onClick={onClose}
           iconStart={<X size={16} strokeWidth={2} />}
         />

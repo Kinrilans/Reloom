@@ -55,8 +55,11 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Колонка действий: заголовок и содержимое по левому краю, как у любой
+   другой колонки. Ширина по содержимому — кнопки не должны растягивать
+   таблицу. */
 .actions {
-  text-align: right;
+  text-align: start;
   width: 1%;
   white-space: nowrap;
 }

@@ -3,8 +3,11 @@
 import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { X } from 'lucide-react'
+import { useI18n } from '@/i18n'
 import { Button } from './Button'
 import styles from './Modal.module.css'
+
+export type ModalSize = 'md' | 'lg'
 
 export interface ModalProps {
   open: boolean
@@ -12,10 +15,13 @@ export interface ModalProps {
   title: ReactNode
   /** Кнопки действия. Необратимые — с подтверждением (docs/flows-admin.md). */
   footer?: ReactNode
+  /** Широкое окно — для форм в две колонки. По умолчанию узкое. */
+  size?: ModalSize
   children: ReactNode
 }
 
-export function Modal({ open, onClose, title, footer, children }: ModalProps) {
+export function Modal({ open, onClose, title, footer, size = 'md', children }: ModalProps) {
+  const { t } = useI18n()
   const ref = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
@@ -36,7 +42,11 @@ export function Modal({ open, onClose, title, footer, children }: ModalProps) {
   }, [onClose])
 
   return (
-    <dialog ref={ref} className={styles.dialog} aria-labelledby="modal-title">
+    <dialog
+      ref={ref}
+      className={[styles.dialog, size === 'lg' ? styles.lg : null].filter(Boolean).join(' ')}
+      aria-labelledby="modal-title"
+    >
       <div className={styles.inner}>
         <div className={styles.header}>
           <h2 className={styles.title} id="modal-title">
@@ -46,7 +56,7 @@ export function Modal({ open, onClose, title, footer, children }: ModalProps) {
             variant="ghost"
             size="sm"
             iconOnly
-            aria-label="Закрыть"
+            aria-label={t('common.close')}
             onClick={onClose}
             iconStart={<X size={18} strokeWidth={2} />}
           />

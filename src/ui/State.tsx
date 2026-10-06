@@ -1,4 +1,7 @@
+'use client'
+
 import type { CSSProperties, ReactNode } from 'react'
+import { useI18n } from '@/i18n'
 import styles from './State.module.css'
 
 /* --- Скелет ---------------------------------------------------------------- */
@@ -38,8 +41,9 @@ export function SkeletonRow() {
 }
 
 export function SkeletonList({ rows = 3 }: { rows?: number }) {
+  const { t } = useI18n()
   return (
-    <div role="status" aria-label="Загрузка">
+    <div role="status" aria-label={t('ui.loading')}>
       {Array.from({ length: rows }, (_, i) => (
         <SkeletonRow key={i} />
       ))}

@@ -1,5 +1,13 @@
+'use client'
+
+import { useI18n } from '@/i18n'
+
 /**
- * Заглушка QR-кода.
+ * Заглушка QR-кода, общая для приложения и админки.
+ *
+ * Код строится из адреса автоматически: оператор его не загружает
+ * и не прикладывает файлом. В продукте здесь будет настоящий
+ * генератор, вход и место на экране те же.
  *
  * Это НЕ настоящий QR: он не сканируется. В прототипе нет ни реальных
  * адресов, ни реальных номеров карт, и рисовать работающий код было бы
@@ -40,7 +48,14 @@ function finderFilled(x: number, y: number): boolean {
   return local(0, GRID - 7)
 }
 
-export function QrPlaceholder({ value, size = 168 }: { value: string; size?: number }) {
+export interface QrPlaceholderProps {
+  /** Строка, из которой рисуется узор. Обычно крипто-адрес. */
+  value: string
+  size?: number
+}
+
+export function QrPlaceholder({ value, size = 168 }: QrPlaceholderProps) {
+  const { t } = useI18n()
   const seed = hash(value)
   const cells: { x: number; y: number }[] = []
 
@@ -62,7 +77,7 @@ export function QrPlaceholder({ value, size = 168 }: { value: string; size?: num
       height={size}
       viewBox={`0 0 ${GRID} ${GRID}`}
       role="img"
-      aria-label="QR-код адреса"
+      aria-label={t('ui.qrAlt')}
       shapeRendering="crispEdges"
     >
       <rect width={GRID} height={GRID} fill="var(--text)" opacity="0" />

@@ -13,6 +13,12 @@
   overflow: hidden;
 }
 
+/* Широкое окно: форма в две колонки. Ограничение по ширине экрана то же,
+   поэтому на телефоне оба размера ведут себя одинаково. */
+.lg {
+  width: min(var(--width-modal-lg), calc(100vw - var(--space-32)));
+}
+
 .dialog::backdrop {
   background: var(--scrim);
 }

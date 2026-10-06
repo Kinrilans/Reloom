@@ -1,0 +1,28 @@
+/* Список флажков в поле с прокруткой. Поверхность та же, что у остальных
+   полей: это поле ввода, а не карточка. */
+
+.box {
+  max-height: var(--height-list-5);
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-12);
+  background: var(--surface-2);
+  border: var(--border-width) solid var(--border-interactive);
+  border-radius: var(--radius-field);
+}
+
+.row {
+  display: flex;
+  padding: var(--space-8) 0;
+  border-top: var(--border-width) solid var(--border);
+}
+
+.row:first-child {
+  border-top: 0;
+}
+
+.empty {
+  padding: var(--space-12) 0;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+  text-align: center;
+}
