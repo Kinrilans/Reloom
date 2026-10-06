@@ -11,7 +11,7 @@
  * фоллбэк, а сам факт пропажи пишется в лог.
  */
 
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import en from './dictionaries/en.json'
 import ru from './dictionaries/ru.json'
@@ -134,6 +134,17 @@ export function I18nProvider({
 }) {
   const [locale, setLocaleState] = useState<Locale>(initialLocale)
 
+  /* После гидратации даты пересобираются в поясе читателя.
+     Подробности — у displayTimeZone ниже. Счётчик нужен затем, чтобы
+     обновилось значение контекста: без этого экраны останутся с датами,
+     собранными на сервере. */
+  const [timeZonePass, setTimeZonePass] = useState(0)
+
+  useEffect(() => {
+    switchToReaderTimeZone()
+    setTimeZonePass((v) => v + 1)
+  }, [])
+
   const setLocale = useCallback((next: Locale) => {
     setLocaleState(next)
     document.documentElement.lang = next
@@ -150,7 +161,9 @@ export function I18nProvider({
       setLocale,
       t: (key, params) => translate(locale, key, params),
     }),
-    [locale, setLocale],
+    // timeZonePass в зависимостях намеренно: он не участвует в значении,
+    // но обязан его обновить, иначе даты не пересоберутся.
+    [locale, setLocale, timeZonePass],
   )
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
@@ -173,12 +186,40 @@ export function useT() {
    готовой строкой из фикстур. Даты локализуются — иначе переключатель
    языка оставляет половину экрана непереведённой. */
 
+/**
+ * Часовой пояс, в котором собираются даты.
+ *
+ * До гидратации — UTC. Разметку рисует сервер, а оживляет её браузер,
+ * и текст обязан совпасть до символа; пояс же у них разный — сервер
+ * живёт в UTC, читатель где угодно. Расхождение в одном часе рушит
+ * гидратацию всей страницы, и React перерисовывает её целиком.
+ *
+ * После гидратации переключаемся на пояс читателя, как требует
+ * docs/i18n.md: «даты и время — в часовом поясе читателя». Переключение
+ * делает I18nProvider, он же заставляет экраны пересобрать даты.
+ *
+ * Значение модульное, а не в контексте, нарочно: иначе пришлось бы
+ * менять подпись у всех функций форматирования и у двадцати восьми мест,
+ * которые их зовут.
+ */
+let displayTimeZone: string | undefined = 'UTC'
+
+/** Вызывается один раз после гидратации. Не хук: имя без «use»,
+ *  чтобы его не приняли за хук и не начали звать по правилам хуков. */
+export function switchToReaderTimeZone() {
+  displayTimeZone = undefined
+}
+
+function dateTimeFormat(locale: Locale, options: Intl.DateTimeFormatOptions) {
+  return new Intl.DateTimeFormat(locale, { ...options, timeZone: displayTimeZone })
+}
+
 export function formatDate(locale: Locale, iso: string): string {
-  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long' }).format(new Date(iso))
+  return dateTimeFormat(locale, { day: 'numeric', month: 'long' }).format(new Date(iso))
 }
 
 export function formatDateTime(locale: Locale, iso: string): string {
-  return new Intl.DateTimeFormat(locale, {
+  return dateTimeFormat(locale, {
     day: 'numeric',
     month: 'long',
     hour: '2-digit',
@@ -187,7 +228,5 @@ export function formatDateTime(locale: Locale, iso: string): string {
 }
 
 export function formatTime(locale: Locale, iso: string): string {
-  return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(
-    new Date(iso),
-  )
+  return dateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
 }
