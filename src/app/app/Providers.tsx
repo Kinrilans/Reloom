@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
+import { PrivacyProvider } from '@/ui'
 import { I18nProvider, PROTOTYPE_LOCALE } from '@/i18n'
 import type { Locale } from '@/i18n'
 import { StoreProvider } from '@/fixtures/store'
@@ -54,10 +55,14 @@ export function Providers({ children, locale }: { children: ReactNode; locale?: 
   return (
     <I18nProvider initialLocale={locale ?? PROTOTYPE_LOCALE}>
       <StoreProvider>
-        {children}
-        {/* Панель показа (П3). Скрытая: вызывается сочетанием клавиш,
-            на телефоне — тройным нажатием на логотип. */}
-        <AppDemoPanel />
+        {/* «Глазик» в шапке прячет суммы на всех экранах сразу, поэтому
+            его состояние живёт здесь, а не на главной. */}
+        <PrivacyProvider>
+          {children}
+          {/* Панель показа (П3). Скрытая: вызывается сочетанием клавиш,
+              на телефоне — тройным нажатием на логотип. */}
+          <AppDemoPanel />
+        </PrivacyProvider>
       </StoreProvider>
     </I18nProvider>
   )

@@ -45,6 +45,14 @@
   gap: var(--space-12);
 }
 
+/* Главное действие и короткая кнопка-значок рядом с ним, в одну строку.
+   Правило идёт после `.footer` в этом же файле, поэтому направление
+   колонки перебивается предсказуемо. */
+.footerRow {
+  flex-direction: row;
+  align-items: center;
+}
+
 /* --- Строки «ключ — значение» ----------------------------------------------- */
 .rows {
   display: flex;
@@ -147,11 +155,22 @@
 
 /* --- Адрес пополнения -------------------------------------------------------- */
 .qr {
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-12);
   padding: var(--space-16);
   background: var(--surface-2);
   border-radius: var(--radius-card);
+}
+
+/* Предупреждение о сети и монете — под самим кодом. Читают его ровно
+   в тот момент, когда наводят камеру, и уводить глаз некуда. */
+.qrNote {
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  text-align: center;
 }
 
 /* Адрес кошелька не переводится и не переносится по словам — только
@@ -162,6 +181,12 @@
   line-height: var(--lh-body);
   overflow-wrap: anywhere;
   color: var(--text);
+}
+
+/* Адрес под кодом: по центру, как и сам код. */
+.addressCenter {
+  text-align: center;
+  margin-top: var(--space-16);
 }
 
 /* Сеть и монета — крупно и заметно: перевод в другой сети означает
@@ -291,4 +316,80 @@
   line-height: var(--lh-dense);
   color: var(--text-muted);
   overflow-wrap: anywhere;
+}
+
+/* --- Состояние в строке списка ------------------------------------------------
+   Точка и короткая подпись рядом. Цвет ловится взглядом, подпись говорит,
+   что он значит: цветом одним состояние не передаётся — для части людей
+   жёлтая точка от зелёной неотличима (docs/prototype.md). */
+.dotRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.dot {
+  display: inline-block;
+  width: var(--space-8);
+  height: var(--space-8);
+  border-radius: var(--radius-pill);
+  flex-shrink: 0;
+}
+
+.dotWarning {
+  background: var(--warning);
+}
+
+.dotSuccess {
+  background: var(--success);
+}
+
+.dotDanger {
+  background: var(--danger);
+}
+
+/* Прикидка пополнения: ряд заранее посчитанных сумм. Переносится,
+   а не прокручивается: сумм немного, и прятать их за жестом незачем. */
+.amounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin: var(--space-16) 0;
+}
+
+.amountChip {
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-pill);
+  border: var(--border-width) solid var(--border-interactive);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.amountChip:hover {
+  border-color: var(--text-muted);
+}
+
+/* Выбранная сумма отмечена не только цветом: подпись становится плотнее. */
+.amountChipActive {
+  border-color: var(--brand-text);
+  background: var(--brand-soft);
+  color: var(--brand-text);
+  font-weight: var(--fw-semibold);
+}
+
+/* Сеть и монета со значком: значок слева, подпись следом. Значок подпись
+   не заменяет — текст читается, значок опознаётся. */
+.networkLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-width: 0;
 }

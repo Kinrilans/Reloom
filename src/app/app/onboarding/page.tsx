@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, Copy, ShieldAlert } from 'lucide-react'
+import { Check, Copy, Mail, ShieldAlert } from 'lucide-react'
 import { Button, Card, Input, Logo, Toast } from '@/ui'
 import { useT } from '@/i18n'
 import { useDemoState } from '@/fixtures/demoState'
@@ -126,7 +126,7 @@ export default function OnboardingPage() {
   return (
     <AppShell>
       <div className={styles.stack}>
-        <Logo variant="lockup" tone="accent" height={28} title="Reloom" />
+        <Logo variant="lockup" tone="duo" height={28} title="Reloom" />
         <h1 className={styles.title}>{t('onboarding.link.title')}</h1>
         <p className={styles.text}>{t('onboarding.link.text')}</p>
 
@@ -143,6 +143,17 @@ export default function OnboardingPage() {
         <div className={styles.footer}>
           <Button fullWidth disabled={code.length === 0} onClick={() => setStep('pin')}>
             {t('onboarding.link.action')}
+          </Button>
+          {/* Telegram есть не у всех, и открыть приложение иногда нужно
+              с компьютера. Вход по почте — равноправный способ, а не
+              запасной (docs/flows-user.md). */}
+          <Button
+            variant="secondary"
+            fullWidth
+            iconStart={<Mail size={16} />}
+            onClick={() => router.push('/app/login')}
+          >
+            {t('login.title')}
           </Button>
           <Button
             variant="ghost"

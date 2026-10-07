@@ -108,30 +108,29 @@ export function NewUserModal({ open, onClose }: NewUserModalProps) {
     >
       <p className={styles.muted}>{t('admin.newUser.lead')}</p>
 
-      <div className={styles.grid2}>
-        <div className={styles.stack}>
-          <Select label={t('admin.newUser.company')} options={companyOptions} defaultValue={COMPANIES[0]!.id} required />
-          <Input
-            label={t('admin.newUser.name')}
-            placeholder={t('admin.newUser.namePlaceholder')}
-            required
-          />
-          <Input
-            label={t('admin.newUser.email')}
-            type="email"
-            placeholder="user@example.com"
-            required
-          />
-        </div>
-        <div className={styles.stack}>
-          <Input label={t('admin.newUser.phone')} placeholder="+7 900 000-00-00" required />
-          <Input label={t('admin.newUser.birthday')} placeholder="1990-01-01" required />
-          <Input
-            label={t('admin.newUser.address')}
-            placeholder={t('admin.newUser.addressPlaceholder')}
-            required
-          />
-        </div>
+      {/* Три поля, и только они. Телефон, дату рождения и адрес оператор
+          руками не вводит: всё, что нужно для выпуска карты, эмитент
+          соберёт сам при прохождении проверки — а то, что оператор
+          наберёт по памяти, придётся потом исправлять. */}
+      <div className={styles.stack}>
+        <Select
+          label={t('admin.newUser.company')}
+          options={companyOptions}
+          defaultValue={COMPANIES[0]!.id}
+          required
+        />
+        <Input
+          label={t('admin.newUser.name')}
+          placeholder={t('admin.newUser.namePlaceholder')}
+          required
+        />
+        <Input
+          label={t('admin.newUser.email')}
+          type="email"
+          placeholder="user@example.com"
+          hint={t('admin.newUser.emailHint')}
+          required
+        />
       </div>
 
       <div className={styles.kpiRows}>

@@ -126,6 +126,42 @@
   background: var(--overlay-dark);
 }
 
+/* --- На фирменной заливке ---------------------------------------------------
+   Пара для экранов, где под кнопкой лежит фирменный градиент. Цвета берутся
+   от самой заливки (--on-brand, --brand-dark), новых в палитру не вводят.
+   Главная здесь белая: фиолетовая кнопка на фиолетовом фоне не видна. */
+.onBrand {
+  background: var(--on-brand);
+  color: var(--brand-dark);
+}
+
+.onBrand::after {
+  background: var(--overlay-dark);
+}
+
+/* Вторая по важности: заливка просвечивает, граница держит форму кнопки
+   на неоднородном градиенте. */
+.onBrandSoft {
+  background: color-mix(in srgb, var(--on-brand) 16%, transparent);
+  color: var(--on-brand);
+  border-color: color-mix(in srgb, var(--on-brand) 36%, transparent);
+}
+
+.onBrandSoft::after {
+  background: var(--overlay-light);
+}
+
+/* Третья ступень: только подпись. Заливка и граница убраны — действие
+   редкое, и занимать им вес настоящей кнопки незачем. */
+.onBrandGhost {
+  background: transparent;
+  color: var(--on-brand);
+}
+
+.onBrandGhost::after {
+  background: var(--overlay-light);
+}
+
 /* --- Загрузка --------------------------------------------------------------
    Подпись остаётся на месте и прячется по видимости, а не убирается из
    потока: иначе кнопка меняет ширину и строка прыгает. */

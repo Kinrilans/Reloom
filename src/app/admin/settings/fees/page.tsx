@@ -10,6 +10,7 @@ import {
   CardHeader,
   Input,
   Modal,
+  Switch,
   TBody,
   TD,
   TH,
@@ -19,7 +20,7 @@ import {
   Toast,
 } from '@/ui'
 import { useI18n } from '@/i18n'
-import { FEES } from '@/fixtures/admin'
+import { CREDITING, FEES, SYSTEM } from '@/fixtures/admin'
 import { useAdmin } from '@/fixtures/adminStore'
 import { AdminShell } from '../../AdminShell'
 import styles from '../../admin.module.css'
@@ -51,10 +52,22 @@ const FIELDS = [
   { key: 'withdrawalMin' },
   { key: 'minDeposit' },
   { key: 'minWithdrawal' },
+  /* Автозачисление и его условия идут через то же сохранение, что и
+     ставки: это одна настройка денег, и менять её молча нельзя. Включение
+     автозачисления попадает в окно «было → стало» наравне с процентами. */
+  { key: 'autoCredit' },
+  { key: 'creditWithoutAml' },
+  { key: 'amlMaxRisk' },
+  { key: 'confirmations' },
 ] as const
 
 type FieldKey = (typeof FIELDS)[number]['key']
 type FeeForm = Record<FieldKey, string>
+
+/** Переключатель хранится строкой, как и остальные поля: окно
+ *  подтверждения показывает «было → стало» одинаково для всех. */
+const ON = 'on'
+const OFF = 'off'
 
 const INITIAL: FeeForm = {
   depositBps: FEES.deposit.bps,
@@ -65,6 +78,10 @@ const INITIAL: FeeForm = {
   withdrawalMin: FEES.withdrawal.min,
   minDeposit: FEES.minDeposit,
   minWithdrawal: FEES.minWithdrawal,
+  autoCredit: CREDITING.auto ? ON : OFF,
+  creditWithoutAml: CREDITING.creditWithoutAml ? ON : OFF,
+  amlMaxRisk: CREDITING.amlMaxRisk,
+  confirmations: CREDITING.confirmations,
 }
 
 export default function FeesPage() {
@@ -78,12 +95,24 @@ export default function FeesPage() {
   const [confirming, setConfirming] = useState(false)
   const [notice, setNotice] = useState(false)
 
+  /** Значение для окна подтверждения: «вкл/выкл» вместо `on`/`off`. */
+  function shown(key: FieldKey, value: string): string {
+    if (key !== 'autoCredit' && key !== 'creditWithoutAml') return value
+    return value === ON ? t('admin.fees.autoOn') : t('admin.fees.autoOff')
+  }
+
   const changes = FIELDS.filter((f) => form[f.key] !== saved[f.key]).map((f) => ({
     key: f.key,
     label: t(`admin.fees.field.${f.key}`),
-    before: saved[f.key],
-    after: form[f.key],
+    before: shown(f.key, saved[f.key]),
+    after: shown(f.key, form[f.key]),
   }))
+
+  /* Проверка AML недоступна — автозачисление работать не может: зачислять
+     непроверенное поступление «на доверии» нельзя. Оператор должен видеть
+     это здесь, рядом с переключателем, а не искать в «Состоянии системы». */
+  const amlDown = SYSTEM.services.some((s) => s.code === 'aml' && !s.ok)
+  const autoOn = form.autoCredit === ON
 
   function set(key: FieldKey, value: string) {
     setForm({ ...form, [key]: value })
@@ -141,6 +170,74 @@ export default function FeesPage() {
           text={t('admin.fees.unsavedText')}
         />
       ) : null}
+
+      {/* Автозачисление. Стоит первым и во всю ширину: это не ещё одна
+          ставка, а ответ на вопрос «кто зачисляет деньги — система или
+          оператор», и от него зависит смысл всего остального на экране. */}
+      <Card density="dense">
+        <CardHeader
+          title={t('admin.fees.autoTitle')}
+          subtitle={t('admin.fees.autoSubtitle')}
+          action={
+            <Badge tone={autoOn ? 'success' : 'neutral'}>
+              {autoOn ? t('admin.fees.autoOn') : t('admin.fees.autoOff')}
+            </Badge>
+          }
+        />
+        <div className={styles.stack}>
+          <Switch
+            label={t('admin.fees.autoSwitch')}
+            checked={autoOn}
+            disabled={!mayEdit}
+            onChange={(e) => set('autoCredit', e.target.checked ? ON : OFF)}
+          />
+          <p className={styles.kpiHint}>{t('admin.fees.autoHint')}</p>
+
+          {/* Что делать, когда проверка молчит. Отдельным переключателем,
+              а не галочкой в подписи: это решение про деньги, и принимают
+              его осознанно. По умолчанию выключено — сбой у стороннего
+              сервиса не должен превращаться в канал, по которому к нам
+              заходит что угодно. */}
+          <Switch
+            label={t('admin.fees.withoutAmlSwitch')}
+            checked={form.creditWithoutAml === ON}
+            disabled={!mayEdit || !autoOn}
+            onChange={(e) => set('creditWithoutAml', e.target.checked ? ON : OFF)}
+          />
+          <p className={styles.kpiHint}>{t('admin.fees.withoutAmlHint')}</p>
+
+          {autoOn && amlDown ? (
+            <Toast
+              tone={form.creditWithoutAml === ON ? 'danger' : 'warning'}
+              title={t('admin.fees.amlDownTitle')}
+              text={
+                form.creditWithoutAml === ON
+                  ? t('admin.fees.amlDownPassing')
+                  : t('admin.fees.amlDownText')
+              }
+            />
+          ) : null}
+
+          <div className={styles.grid2}>
+            <Input
+              label={t('admin.fees.amlMaxRisk')}
+              numeric
+              value={form.amlMaxRisk}
+              onChange={(e) => set('amlMaxRisk', e.target.value)}
+              disabled={!mayEdit || !autoOn}
+              hint={t('admin.fees.amlMaxRiskHint')}
+            />
+            <Input
+              label={t('admin.fees.confirmations')}
+              numeric
+              value={form.confirmations}
+              onChange={(e) => set('confirmations', e.target.value)}
+              disabled={!mayEdit || !autoOn}
+              hint={t('admin.fees.confirmationsHint')}
+            />
+          </div>
+        </div>
+      </Card>
 
       <div className={styles.grid2}>
         <Card density="dense">

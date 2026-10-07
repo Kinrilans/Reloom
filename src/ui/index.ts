@@ -28,6 +28,9 @@ export type { CardProps, CardHeaderProps, CardDensity, CardTone } from './Card'
 export { Badge } from './Badge'
 export type { BadgeProps, BadgeTone } from './Badge'
 
+export { PrivacyProvider, useAmountsHidden, usePrivacy } from './Privacy'
+export type { PrivacyValue } from './Privacy'
+
 export { Amount } from './Amount'
 export type { AmountProps, AmountSize } from './Amount'
 
@@ -41,7 +44,7 @@ export { Modal } from './Modal'
 export type { ModalProps, ModalSize } from './Modal'
 
 export { Drawer } from './Drawer'
-export type { DrawerProps } from './Drawer'
+export type { DrawerProps, DrawerPlacement } from './Drawer'
 
 export { Toast, ToastViewport } from './Toast'
 export type { ToastProps, ToastTone } from './Toast'

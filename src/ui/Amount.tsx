@@ -1,3 +1,6 @@
+'use client'
+
+import { useAmountsHidden } from './Privacy'
 import styles from './Amount.module.css'
 
 /**
@@ -12,7 +15,14 @@ import styles from './Amount.module.css'
  * приходят константами из фикстур, а в продукте строку готовит общий хелпер
  * форматирования на границе UI (docs/domain-and-money.md). Любой расчёт,
  * заехавший в этот файл, переживёт прототип и всплывёт на реальных деньгах.
+ *
+ * Когда суммы скрыты «глазиком» в шапке, вместо значения стоит маска
+ * постоянной длины. Длину исходного числа она не выдаёт нарочно: по длине
+ * маски соседу видно порядок суммы, а прячут её как раз от соседа.
  */
+
+/** Маска скрытой суммы. Длина постоянная и от значения не зависит. */
+const MASK = '••••'
 
 export type AmountSize = 'display' | 'kpi' | 'body' | 'caption'
 
@@ -37,6 +47,7 @@ export function Amount({
   struck = false,
   className,
 }: AmountProps) {
+  const hidden = useAmountsHidden()
   const split = value.lastIndexOf('.')
   const whole = split === -1 ? value : value.slice(0, split)
   const fraction = split === -1 ? null : value.slice(split)
@@ -50,6 +61,15 @@ export function Amount({
   ]
     .filter(Boolean)
     .join(' ')
+
+  if (hidden) {
+    return (
+      <span className={classes}>
+        <span className={styles.masked}>{MASK}</span>
+        {currency ? <span className={styles.currency}>{currency}</span> : null}
+      </span>
+    )
+  }
 
   return (
     <span className={classes}>

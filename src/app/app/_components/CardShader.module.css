@@ -1,0 +1,148 @@
+/* Слой переливания. Лежит между фирменным градиентом карты и её
+   содержимым, границы карты не выходит.
+
+   Цвета — только фирменные токены: светлый и тёмный концы градиента
+   логотипа плюс мята из акцентной пары. Новых оттенков слой не вводит,
+   он их смешивает. */
+
+.shader {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.blobA,
+.blobB,
+.blobC {
+  position: absolute;
+  /* Пятно заметно шире карты: внутрь попадает только его середина,
+     и край пятна нигде не виден. */
+  width: 115%;
+  aspect-ratio: 1;
+  border-radius: var(--radius-pill);
+  filter: blur(34px);
+  /* Браузер готовит слой заранее: иначе первый кадр движения дёргается. */
+  will-change: transform;
+}
+
+/* Светлое пятно — источник света. Берёт светлый конец фирменного
+   градиента, тот же, что в логотипе. */
+.blobA {
+  top: -35%;
+  left: -20%;
+  background: radial-gradient(
+    circle at center,
+    var(--brand-light),
+    transparent 68%
+  );
+}
+
+/* Заводь другого тона. Она тут не для красоты: без неё карта остаётся
+   ровно-сиреневой и переливаться нечему. Цвет — фон темы, новых оттенков
+   слой не вводит: на тёмной теме заводь тёмная и заодно поднимает
+   контраст белого текста, на светлой — светлая. */
+.blobB {
+  bottom: -40%;
+  left: -15%;
+  width: 130%;
+  background: radial-gradient(
+    circle at center,
+    color-mix(in srgb, var(--bg) 92%, transparent),
+    transparent 72%
+  );
+}
+
+/* Мятный отлив — то самое «зелёное» из референса. Сидит в правом нижнем
+   углу и приглушён: по нему не идёт ни одна крупная подпись, а белый
+   текст на светлой мяте читается плохо. */
+.blobC {
+  bottom: -30%;
+  right: -30%;
+  width: 85%;
+  opacity: 0.42;
+  background: radial-gradient(
+    circle at center,
+    color-mix(in srgb, var(--accent-dark) 90%, transparent),
+    transparent 68%
+  );
+}
+
+/* --- Рисунки движения --------------------------------------------------------
+   Отличаются направлением, длительностью и сдвигом фаз. Длительности
+   нарочно не кратны друг другу: иначе пятна через круг сходятся
+   в одно положение, и карта начинает «мигать» по расписанию. */
+
+@keyframes driftA {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(18%, 12%, 0) scale(1.18);
+  }
+}
+
+@keyframes driftB {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.1);
+  }
+  to {
+    transform: translate3d(-16%, -14%, 0) scale(0.92);
+  }
+}
+
+@keyframes driftC {
+  from {
+    transform: translate3d(0, 0, 0) scale(0.95);
+    opacity: 0.3;
+  }
+  to {
+    transform: translate3d(-24%, -16%, 0) scale(1.25);
+    opacity: 0.5;
+  }
+}
+
+.shader .blobA {
+  animation: driftA 34s var(--ease-in-out) infinite alternate;
+}
+
+.shader .blobB {
+  animation: driftB 27s var(--ease-in-out) infinite alternate;
+}
+
+.shader .blobC {
+  animation: driftC 41s var(--ease-in-out) infinite alternate;
+}
+
+/* Вариант 2: обратный ход и другие фазы. */
+.v2 .blobA {
+  animation-duration: 29s;
+  animation-direction: alternate-reverse;
+}
+
+.v2 .blobB {
+  animation-duration: 38s;
+  animation-delay: -12s;
+}
+
+.v2 .blobC {
+  animation-duration: 33s;
+  animation-direction: alternate-reverse;
+}
+
+/* Вариант 3: самый спокойный — длиннее циклы, меньше сдвиги. */
+.v3 .blobA {
+  animation-duration: 46s;
+  animation-delay: -20s;
+}
+
+.v3 .blobB {
+  animation-duration: 52s;
+  animation-direction: alternate-reverse;
+}
+
+.v3 .blobC {
+  animation-duration: 44s;
+  animation-delay: -8s;
+}

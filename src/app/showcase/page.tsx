@@ -296,13 +296,12 @@ function Showcase() {
         {/* ----------------------------------------------------------------- */}
         <Section
           title="Логотип"
-          note="Собран из контуров design/logo/reloom-white.svg. Знак не меньше 24px, на пёстрый фон без подложки не ставится."
+          note="Собран из контуров design/logo/reloom-white.svg. Знак не меньше 24px, на пёстрый фон без подложки не ставится. Основной вид в интерфейсе — первый: фиолетовый знак и надпись цветом текста. Зелёного варианта в интерфейсе нет."
         >
           <div className={styles.row}>
-            <Logo variant="lockup" tone="accent" height={32} title="Reloom" />
+            <Logo variant="lockup" tone="duo" height={32} title="Reloom" />
             <Logo variant="lockup" tone="brand" height={32} title="Reloom" />
             <Logo variant="lockup" tone="current" height={32} title="Reloom" />
-            <Logo variant="mark" tone="accent" height={40} title="Reloom" />
             <Logo variant="mark" tone="brand" height={40} title="Reloom" />
             <Logo variant="mark" tone="current" height={24} title="Reloom" />
           </div>
@@ -321,6 +320,15 @@ function Showcase() {
               <Button variant="ghost">Подробнее</Button>
               <Button variant="danger">Заблокировать</Button>
             </div>
+          </Block>
+          <Block label="На фирменной заливке: экран входа, лицевая сторона карты">
+            <Card tone="brand" grain>
+              <div className={styles.row}>
+                <Button variant="onBrand">Вход через Telegram</Button>
+                <Button variant="onBrandSoft">Войти через почту</Button>
+                <Button variant="onBrandGhost">Вход по ключу доступа</Button>
+              </div>
+            </Card>
           </Block>
           <Block label="Размеры">
             <div className={styles.row}>

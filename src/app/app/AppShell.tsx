@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { ChevronLeft, CreditCard, Receipt, Settings } from 'lucide-react'
+import { Bell, ChevronLeft, CreditCard, Receipt, Settings } from 'lucide-react'
 import { Button } from '@/ui'
 import { useT } from '@/i18n'
 import styles from './AppShell.module.css'
@@ -11,6 +11,7 @@ import styles from './AppShell.module.css'
 const NAV = [
   { href: '/app', labelKey: 'nav.home', icon: CreditCard },
   { href: '/app/history', labelKey: 'nav.history', icon: Receipt },
+  { href: '/app/notifications', labelKey: 'nav.notifications', icon: Bell },
   /* На «Настройках» висит тихий вызов панели показа: три быстрых нажатия.
      Нужен для телефона, где клавиатуры нет (src/demo/useDemoPanel.ts).
      Место выбрано нарочно неслучайным — промахнуться тремя подряд
@@ -22,21 +23,45 @@ export interface AppShellProps {
   title?: string
   /** Кнопка «Назад» в шапке. Внутри Telegram дублирует системную. */
   back?: boolean
+  /** Куда ведёт «Назад». По умолчанию — в историю браузера. Мастер из
+   *  нескольких шагов на одном адресе передаёт свой обработчик: иначе
+   *  кнопка уводит с экрана целиком, а человек ждал предыдущий шаг. */
+  onBack?: () => void
   /** Нижняя навигация: на корневых экранах есть, на шагах мастеров нет. */
   nav?: boolean
   action?: ReactNode
   children: ReactNode
 }
 
-export function AppShell({ title, back = false, nav = false, action, children }: AppShellProps) {
+/**
+ * Оболочка клиентской части.
+ *
+ * На вкладках шапки нет вовсе: место на телефоне дорогое, а показывать
+ * в ней было нечего — название экрана и так стоит заголовком в полотне.
+ * «Глазик», который прятал суммы, переехал на главную, в строку счёта:
+ * он относится к суммам, а не к приложению целиком.
+ *
+ * Шапка остаётся только на шагах мастеров: там нужна кнопка «Назад»
+ * и название того, что человек сейчас делает.
+ */
+export function AppShell({
+  title,
+  back = false,
+  onBack,
+  nav = false,
+  action,
+  children,
+}: AppShellProps) {
   const t = useT()
   const router = useRouter()
   const pathname = usePathname()
 
+  const hasHeader = !nav && (back || title || action)
+
   return (
     <div className={styles.viewport}>
       <div className={styles.frame}>
-        {back || title || action ? (
+        {hasHeader ? (
           <header className={styles.header}>
             {back ? (
               <Button
@@ -44,7 +69,7 @@ export function AppShell({ title, back = false, nav = false, action, children }:
                 size="sm"
                 iconOnly
                 aria-label={t('common.back')}
-                onClick={() => router.back()}
+                onClick={() => (onBack ? onBack() : router.back())}
                 iconStart={<ChevronLeft size={20} />}
               />
             ) : null}
@@ -53,7 +78,20 @@ export function AppShell({ title, back = false, nav = false, action, children }:
           </header>
         ) : null}
 
-        <main className={[styles.content, nav ? styles.withNav : null].filter(Boolean).join(' ')}>
+        <main
+          className={[
+            styles.content,
+            /* Без шапки полотно начинается от самой кромки экрана —
+               отступ и безопасную зону добавляем здесь. */
+            hasHeader ? null : styles.topSafe,
+            nav ? styles.withNav : null,
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
+          {/* Название вкладки — заголовком в полотне, а не в шапке:
+              шапки на вкладках нет. */}
+          {nav && title ? <h1 className={styles.screenTitle}>{title}</h1> : null}
           {children}
         </main>
 

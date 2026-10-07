@@ -18,7 +18,7 @@ import {
 } from '@/ui'
 import type { SelectOption } from '@/ui'
 import { formatDateTime, useI18n } from '@/i18n'
-import { DEPOSITS, FEES, USERS, companyName } from '@/fixtures/admin'
+import { CREDITING, DEPOSITS, FEES, USERS, companyName } from '@/fixtures/admin'
 import { useAdmin } from '@/fixtures/adminStore'
 import styles from '../../admin.module.css'
 
@@ -56,6 +56,8 @@ export function DepositDrawer({ depositId, onClose }: DepositDrawerProps) {
 
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [rejectOpen, setRejectOpen] = useState(false)
+  const [refundOpen, setRefundOpen] = useState(false)
+  const [refunded, setRefunded] = useState(false)
   const [overrideFee, setOverrideFee] = useState(false)
   const [done, setDone] = useState<'credited' | 'rejected' | null>(null)
   const [received, setReceived] = useState('')
@@ -65,6 +67,8 @@ export function DepositDrawer({ depositId, onClose }: DepositDrawerProps) {
   useEffect(() => {
     setConfirmOpen(false)
     setRejectOpen(false)
+    setRefundOpen(false)
+    setRefunded(false)
     setOverrideFee(false)
     setDone(null)
     setReceived(deposit?.declared ?? '')
@@ -132,6 +136,18 @@ export function DepositDrawer({ depositId, onClose }: DepositDrawerProps) {
               />
             ) : null}
 
+            {/* Заявка занята другим оператором. Предупреждение, а не
+                запрет: запрет держится на сервере (docs/flows-admin.md),
+                здесь задача проще — чтобы двое не начали разбирать одно
+                и то же, не зная друг о друге. */}
+            {deposit.claimedBy ? (
+              <Toast
+                tone="warning"
+                title={t('admin.depDrawer.claimedTitle', { name: deposit.claimedBy })}
+                text={t('admin.depDrawer.claimedText')}
+              />
+            ) : null}
+
             <Card density="dense">
               <CardHeader title={t('admin.depDrawer.requestCard')} />
               <div className={styles.rows}>
@@ -181,6 +197,100 @@ export function DepositDrawer({ depositId, onClose }: DepositDrawerProps) {
                 </div>
               </div>
             </Card>
+
+            {/* Проверка AML. Стоит до истории и до «что произойдёт»:
+                пока вердикт не ясен, остальное не имеет значения.
+
+                Оценку риска даёт внешний сервис. Мы её не считаем и не
+                пересчитываем — только сравниваем с порогом из настроек
+                (docs/prototype.md). */}
+            {deposit.amlVerdict ? (
+              <Card density="dense">
+                <CardHeader
+                  title={t('admin.depDrawer.amlTitle')}
+                  subtitle={t('admin.depDrawer.amlSubtitle', {
+                    limit: CREDITING.amlMaxRisk,
+                  })}
+                  action={
+                    <Badge
+                      tone={
+                        deposit.amlVerdict === 'pass'
+                          ? 'success'
+                          : deposit.amlVerdict === 'fail'
+                            ? 'danger'
+                            : 'warning'
+                      }
+                    >
+                      {t(`admin.deposits.aml.${deposit.amlVerdict}`)}
+                    </Badge>
+                  }
+                />
+                <div className={styles.rows}>
+                  <div className={styles.row}>
+                    <span className={styles.rowLabel}>{t('admin.depDrawer.risk')}</span>
+                    <span className={styles.rowValue}>{deposit.amlRisk ?? '—'}</span>
+                  </div>
+                  <div className={styles.row}>
+                    <span className={styles.rowLabel}>{t('admin.depDrawer.toAddress')}</span>
+                    <span className={[styles.rowValue, styles.mono].join(' ')}>
+                      {deposit.address ?? '—'}
+                    </span>
+                  </div>
+                  <div className={styles.row}>
+                    <span className={styles.rowLabel}>{t('admin.depDrawer.fromAddress')}</span>
+                    <span className={[styles.rowValue, styles.mono].join(' ')}>
+                      {deposit.fromAddress ?? '—'}
+                    </span>
+                  </div>
+                </div>
+
+                {deposit.amlVerdict === 'fail' ? (
+                  <div className={styles.stack}>
+                    <Toast
+                      tone="danger"
+                      title={t('admin.depDrawer.heldTitle')}
+                      text={t('admin.depDrawer.heldText')}
+                    />
+                    {/* Возврат запускает сам пользователь из приложения,
+                        и это не послабление правила «деньги наружу — через
+                        оператора». Средства в систему не зачислялись: они
+                        лежат на крипто-адресе, в леджере их нет, и вернуть
+                        их можно ровно на один адрес — тот, с которого они
+                        пришли. Выбора получателя нет, значит нет и решения,
+                        которое должен принимать человек.
+
+                        Оператору кнопка оставлена на случай, когда
+                        пользователь не отвечает: деньги не могут висеть
+                        на адресе вечно. */}
+                    {deposit.refund === 'requested' ? (
+                      <Toast
+                        tone="neutral"
+                        title={t('admin.depDrawer.refundRequestedTitle')}
+                        text={t('admin.depDrawer.refundRequestedText')}
+                      />
+                    ) : (
+                      <Toast
+                        tone="neutral"
+                        title={t('admin.depDrawer.refundWaitTitle')}
+                        text={t('admin.depDrawer.refundWaitText')}
+                      />
+                    )}
+                    {mayApprove && refunded !== true ? (
+                      <Button variant="secondary" onClick={() => setRefundOpen(true)}>
+                        {t('admin.depDrawer.refund')}
+                      </Button>
+                    ) : null}
+                    {refunded ? (
+                      <Toast
+                        tone="success"
+                        title={t('admin.depDrawer.refundSentTitle')}
+                        text={t('admin.depDrawer.refundSentText')}
+                      />
+                    ) : null}
+                  </div>
+                ) : null}
+              </Card>
+            ) : null}
 
             <Card density="dense">
               <CardHeader
@@ -298,6 +408,70 @@ export function DepositDrawer({ depositId, onClose }: DepositDrawerProps) {
               tone="neutral"
               title={t('admin.depDrawer.minTitle', { amount: FEES.minDeposit })}
               text={t('admin.depDrawer.minText')}
+            />
+          </div>
+        ) : null}
+      </Modal>
+
+      {/* --- Возврат отправителю ----------------------------------------- */}
+      <Modal
+        open={refundOpen && deposit !== undefined}
+        onClose={() => setRefundOpen(false)}
+        title={t('admin.depDrawer.refundTitle')}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setRefundOpen(false)}>
+              {t('admin.depDrawer.cancel')}
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                setRefundOpen(false)
+                setRefunded(true)
+              }}
+            >
+              {t('admin.depDrawer.refundConfirm')}
+            </Button>
+          </>
+        }
+      >
+        {deposit ? (
+          <div className={styles.stack}>
+            <Toast
+              tone="warning"
+              title={t('admin.depDrawer.refundWarnTitle')}
+              text={t('admin.depDrawer.refundWarnText')}
+            />
+            <div className={styles.rows}>
+              <div className={styles.row}>
+                <span className={styles.rowLabel}>{t('admin.depDrawer.refundAmount')}</span>
+                <span className={styles.rowValue}>
+                  <Amount value={deposit.declared} currency={deposit.asset} size="caption" />
+                </span>
+              </div>
+              <div className={styles.row}>
+                <span className={styles.rowLabel}>{t('admin.depDrawer.networkFee')}</span>
+                <span className={styles.rowValue}>
+                  {deposit.refundFee ? (
+                    <Amount value={deposit.refundFee} currency={deposit.asset} size="caption" />
+                  ) : (
+                    '—'
+                  )}
+                </span>
+              </div>
+              <div className={styles.row}>
+                <span className={styles.rowLabel}>{t('admin.depDrawer.fromAddress')}</span>
+                <span className={[styles.rowValue, styles.mono].join(' ')}>
+                  {deposit.fromAddress ?? '—'}
+                </span>
+              </div>
+            </div>
+            {/* Адрес после возврата не живёт: он засвечен в той же цепочке,
+                и следующее поступление притащит ту же историю. */}
+            <Toast
+              tone="neutral"
+              title={t('admin.depDrawer.burnTitle')}
+              text={t('admin.depDrawer.burnText')}
             />
           </div>
         ) : null}

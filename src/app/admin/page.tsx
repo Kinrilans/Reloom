@@ -19,6 +19,7 @@ import {
   COMPANIES,
   DEPOSITS,
   NEGATIVE_USERS,
+  REVENUE,
   STUCK_USERS,
   SYSTEM,
 } from '@/fixtures/admin'
@@ -89,6 +90,10 @@ export default function DashboardPage() {
   const stuck = byCompany(STUCK_USERS)
   const closing = byCompany(CLOSING_CARDS)
 
+  /* Разрез выручки берётся готовым под выбранную компанию: складывать
+     разрезы в коде нельзя, это те же деньги. */
+  const revenue = REVENUE[isAllCompanies ? 'all' : companyId] ?? REVENUE.all!
+
   const oldest = deposits[0]
 
   const queue: QueueRow[] = [
@@ -150,6 +155,50 @@ export default function DashboardPage() {
       title={t('admin.dashboard.title')}
       note={t('admin.dashboard.note')}
     >
+      {/* Выручка стоит первой строкой. Пулы и очереди — работа оператора,
+          а это ответ на вопрос, ради которого смотрят дашборд: сколько
+          через нас прошло и сколько мы на этом заработали. */}
+      <div className={styles.grid2}>
+        <Card density="dense">
+          <div className={styles.kpiLabel}>
+            {t('admin.revenue.profit')}
+            <Badge tone="neutral">{t('admin.revenue.period')}</Badge>
+          </div>
+          <Amount value={revenue.profit} currency="USD" size="kpi" />
+          <div className={styles.kpiRows}>
+            <div className={styles.kpiRow}>
+              <span className={styles.kpiRowLabel}>{t('admin.revenue.fromDeposits')}</span>
+              <Amount value={revenue.fromDeposits} currency="USD" size="caption" />
+            </div>
+            <div className={styles.kpiRow}>
+              <span className={styles.kpiRowLabel}>{t('admin.revenue.fromWithdrawals')}</span>
+              <Amount value={revenue.fromWithdrawals} currency="USD" size="caption" />
+            </div>
+          </div>
+          <p className={styles.kpiHint}>{t('admin.revenue.profitHint')}</p>
+        </Card>
+
+        <Card density="dense">
+          <div className={styles.kpiLabel}>{t('admin.revenue.inflow')}</div>
+          <Amount value={revenue.inflow} currency="USD" size="kpi" />
+          <div className={styles.kpiRows}>
+            {revenue.networks.map((n) => (
+              <div className={styles.kpiRow} key={`${n.id}-${n.asset}`}>
+                <span className={styles.kpiRowLabel}>
+                  {n.name} · {n.asset}
+                </span>
+                <span className={styles.networkTitle}>
+                  <Amount value={n.amount} currency="USD" size="caption" />
+                  <span className={styles.company}>
+                    {t('admin.revenue.share', { value: n.share })}
+                  </span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
       <div className={styles.grid4}>
         {companies.map((company) => (
           <PoolCard key={company.id} company={company} />

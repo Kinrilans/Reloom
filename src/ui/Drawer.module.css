@@ -43,6 +43,41 @@
   }
 }
 
+/* --- Нижняя шторка ------------------------------------------------------------
+   То же окно, выезжающее снизу: на телефоне панель сбоку занимает экран
+   целиком и перестаёт отличаться от перехода на другой экран.
+
+   Высота ограничена: верх прежнего экрана обязан остаться видимым, иначе
+   шторка снова читается как новая страница. */
+.bottom {
+  /* Верхний край отпущен явно: у <dialog> в стилях браузера задан
+     inset: 0, и при height: auto окно растягивается во всю высоту,
+     сколько бы содержимого в нём ни было. */
+  top: auto;
+  bottom: 0;
+  margin: 0 auto;
+  width: min(var(--width-app), 100vw);
+  height: auto;
+  max-height: 86dvh;
+  border-left: 0;
+  border-top: var(--border-width) solid var(--border);
+  border-radius: var(--radius-slab) var(--radius-slab) 0 0;
+  /* Безопасная зона телефона: кнопки не должны уезжать под системную
+     полосу жестов. */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.bottom[open] {
+  animation: sheetIn var(--dur-slow) var(--ease-out);
+}
+
+@keyframes sheetIn {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-32));
+  }
+}
+
 .inner {
   display: flex;
   flex-direction: column;

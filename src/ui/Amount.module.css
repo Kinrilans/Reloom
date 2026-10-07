@@ -74,3 +74,14 @@
 .onBrand .currency {
   color: color-mix(in srgb, var(--on-brand) 70%, transparent);
 }
+
+/* Скрытая сумма. Маска набирается тем же кеглем, но с разрядкой: иначе
+   четыре точки читаются как многоточие, то есть как «идёт загрузка». */
+.masked {
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+.onBrand .masked {
+  color: color-mix(in srgb, var(--on-brand) 70%, transparent);
+}

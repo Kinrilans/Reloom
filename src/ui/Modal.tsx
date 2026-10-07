@@ -23,12 +23,18 @@ export interface ModalProps {
 export function Modal({ open, onClose, title, footer, size = 'md', children }: ModalProps) {
   const { t } = useI18n()
   const ref = useRef<HTMLDialogElement>(null)
+  /* Закрыли ли мы диалог сами. Нужно, чтобы отличить это от Esc и клика
+     по фону: см. обработчик события close ниже. */
+  const closedByUs = useRef(false)
 
   useEffect(() => {
     const dialog = ref.current
     if (!dialog) return
     if (open && !dialog.open) dialog.showModal()
-    if (!open && dialog.open) dialog.close()
+    if (!open && dialog.open) {
+      closedByUs.current = true
+      dialog.close()
+    }
   }, [open])
 
   // Esc закрывает нативно — событие close ловим, чтобы состояние снаружи
@@ -36,7 +42,17 @@ export function Modal({ open, onClose, title, footer, size = 'md', children }: M
   useEffect(() => {
     const dialog = ref.current
     if (!dialog) return
-    const handleClose = () => onClose()
+    const handleClose = () => {
+      // Закрытие, которое мы сами и вызвали: снаружи состояние уже
+      // изменилось. Сообщать о нём обратно нельзя — иначе переход
+      // «первый шаг -> второй» закрывает оба: первый диалог досылает
+      // onClose и затирает только что выбранный шаг.
+      if (closedByUs.current) {
+        closedByUs.current = false
+        return
+      }
+      onClose()
+    }
     dialog.addEventListener('close', handleClose)
     return () => dialog.removeEventListener('close', handleClose)
   }, [onClose])

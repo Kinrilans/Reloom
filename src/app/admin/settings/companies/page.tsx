@@ -170,11 +170,14 @@ export default function CompaniesPage() {
           />
           <Input label={t('admin.companies.name')} placeholder="Holding Epsilon" required />
           <Input label={t('admin.companies.oxenId')} placeholder="cl_…" required />
-          <Input
-            label={t('admin.companies.depositAddress')}
-            placeholder={t('admin.companies.depositPlaceholder')}
-            hint={t('admin.companies.depositHint')}
-            readOnly
+          {/* Поля для депозитного адреса здесь нет. Адрес выдаёт эмитент
+              после заведения компании, и он подтянется сам — пустое поле
+              на этом шаге заполнить нечем, а заполненное руками означает
+              чужой адрес, на который уйдут деньги пула. */}
+          <Toast
+            tone="neutral"
+            title={t('admin.companies.depositLaterTitle')}
+            text={t('admin.companies.depositLaterText')}
           />
           <Switch label={t('admin.companies.activeSwitch')} defaultChecked />
           <Checkbox

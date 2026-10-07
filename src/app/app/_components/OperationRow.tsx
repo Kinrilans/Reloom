@@ -8,7 +8,7 @@ import {
   CreditCard,
   RotateCcw,
 } from 'lucide-react'
-import { Amount, ListRow } from '@/ui'
+import { Amount, ListRow, useAmountsHidden } from '@/ui'
 import { formatDateTime, useI18n } from '@/i18n'
 import type { Operation } from '@/fixtures/types'
 
@@ -31,6 +31,7 @@ const ICONS = {
 export function OperationRow({ operation, linked = true }: { operation: Operation; linked?: boolean }) {
   const { t, locale } = useI18n()
   const router = useRouter()
+  const hidden = useAmountsHidden()
   const Icon = ICONS[operation.type]
 
   const title = operation.merchant ?? t(operation.titleKey ?? `op.type.${operation.type}`)
@@ -45,9 +46,12 @@ export function OperationRow({ operation, linked = true }: { operation: Operatio
 
   // Сумма мерчанта — мельче под основной. В расчётах не участвует,
   // показывается только чтобы человек узнал операцию.
-  const note = operation.localAmount
-    ? `${operation.localAmount} ${operation.localCurrency}`
-    : undefined
+  // Когда суммы скрыты, прячется и она: иначе по сумме мерчанта читается
+  // та же покупка, только в евро.
+  const note =
+    operation.localAmount && !hidden
+      ? `${operation.localAmount} ${operation.localCurrency}`
+      : undefined
 
   return (
     <ListRow

@@ -21,6 +21,7 @@ import {
   ScrollText,
   Search,
   Users,
+  Wallet,
 } from 'lucide-react'
 import { Button, Input, Logo, Modal, Select, ThemeToggle } from '@/ui'
 import type { SelectOption } from '@/ui'
@@ -76,6 +77,10 @@ export function AdminShell({ title, note, parent, action, children }: AdminShell
         { href: '/admin', label: t('admin.nav.dashboard'), icon: LayoutDashboard },
         // Основная ежедневная работа — счётчик показывает очередь.
         { href: '/admin/deposits', label: t('admin.nav.deposits'), icon: ArrowDownToLine, count: DEPOSITS.length },
+        /* Адреса стоят рядом с пополнениями, а не в настройках: это не
+           настройка, а рабочие данные — оператор открывает их, когда
+           разбирает поступление. */
+        { href: '/admin/addresses', label: t('admin.nav.addresses'), icon: Wallet },
         { href: '/admin/users', label: t('admin.nav.users'), icon: Users },
         { href: '/admin/cards', label: t('admin.nav.cards'), icon: CreditCard },
         { href: '/admin/transactions', label: t('admin.nav.transactions'), icon: Receipt },

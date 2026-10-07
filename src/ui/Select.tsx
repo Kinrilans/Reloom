@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { Check, ChevronDown, CircleAlert } from 'lucide-react'
 import { useI18n } from '@/i18n'
 import fieldStyles from './Field.module.css'
@@ -47,6 +47,9 @@ export function placeBelow(trigger: HTMLElement | null): Placement | null {
 export interface SelectOption {
   value: string
   label: string
+  /** Значок перед подписью: монета в выборе сети, флаг в выборе языка.
+   *  Подпись он не заменяет — выбор глазами быстрее, но читается текст. */
+  icon?: ReactNode
   disabled?: boolean
 }
 
@@ -281,6 +284,7 @@ export function Select({
           onClick={() => (open ? close() : openList())}
           onKeyDown={onKeyDown}
         >
+          {selectedOption?.icon ?? null}
           <span
             className={[styles.value, selectedOption ? null : styles.placeholder]
               .filter(Boolean)
@@ -341,7 +345,8 @@ export function Select({
                       triggerRef.current?.focus()
                     }}
                   >
-                    {option.label}
+                    {option.icon ?? null}
+                    <span className={styles.value}>{option.label}</span>
                     <Check
                       className={[styles.check, isSelected ? null : styles.checkHidden]
                         .filter(Boolean)

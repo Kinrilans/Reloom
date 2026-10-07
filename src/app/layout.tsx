@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Onest } from 'next/font/google'
 import '@/ui/globals.css'
 
@@ -15,6 +15,19 @@ const onest = Onest({
 export const metadata: Metadata = {
   title: 'Reloom',
   description: 'Внутренняя платформа корпоративных расходных карт',
+  /* Приложение открывают и в браузере — с телефона его добавляют на
+     рабочий стол через «Поделиться» (docs/flows-user.md). Отсюда манифест
+     и признаки «запускается как приложение». */
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, title: 'Reloom', statusBarStyle: 'black-translucent' },
+}
+
+/* Безопасные зоны телефона мы уже уважаем (env(safe-area-inset-*)), но
+   работает это только при viewport-fit: cover. Без него на айфоне с
+   «чёлкой» нижняя навигация уезжает под системную полосу. */
+export const viewport: Viewport = {
+  viewportFit: 'cover',
+  themeColor: '#0c0c10',
 }
 
 // Тёмная тема основная на обеих поверхностях. Скрипт ниже применяет

@@ -2,7 +2,22 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { LoaderCircle } from 'lucide-react'
 import styles from './Button.module.css'
 
-export type ButtonVariant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'danger'
+/**
+ * `onBrand`, `onBrandSoft` и `onBrandGhost` — тройка для кнопок, лежащих
+ * НА фирменной заливке: экран входа, лицевая сторона карты. Обычная
+ * главная кнопка там пропадает — фиолетовый градиент на фиолетовом фоне
+ * не виден. Три ступени нужны там, где на одной заливке стоит выбор из
+ * трёх действий и важно, какое из них основное.
+ */
+export type ButtonVariant =
+  | 'primary'
+  | 'accent'
+  | 'secondary'
+  | 'ghost'
+  | 'danger'
+  | 'onBrand'
+  | 'onBrandSoft'
+  | 'onBrandGhost'
 export type ButtonSize = 'sm' | 'md' | 'lg'
 
 export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> {

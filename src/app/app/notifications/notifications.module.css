@@ -1,0 +1,119 @@
+/* Лента уведомлений.
+
+   Вид переписки: сообщения приходят слева, лепятся к левому краю, время
+   стоит под текстом. Справа ничего не выравнивается — отвечать здесь
+   некому, это односторонний поток. */
+
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+/* Разделитель дня. Не липкий: прокрутка здесь короткая, а липкая плашка
+   съедает верх экрана, где и так стоит шапка. */
+.day {
+  align-self: center;
+  padding: var(--space-4) var(--space-12);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: var(--fs-micro);
+}
+
+.bubble {
+  display: flex;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-16);
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  /* Скошенный левый нижний угол — «хвост» сообщения. Рисуется радиусом,
+     а не треугольником: один угол дешевле псевдоэлемента. */
+  border-radius: var(--radius-card) var(--radius-card) var(--radius-card) var(--space-4);
+  /* Сообщение не растягивается на всю ширину: короткое должно выглядеть
+     коротким, иначе лента перестаёт читаться как переписка. */
+  margin-inline-end: var(--space-24);
+  min-width: 0;
+}
+
+/* Непрочитанное помечено полосой и подписью, а не только цветом. */
+.unread {
+  border-inline-start: var(--bar-width) solid var(--brand);
+}
+
+.icon {
+  flex-shrink: 0;
+  width: var(--control-sm);
+  height: var(--control-sm);
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.title {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-heading);
+}
+
+/* Название мерчанта приходит сырым и переносится как придётся: иначе
+   длинная строка раздвигает сообщение шире экрана. */
+.text {
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.code {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  margin-top: var(--space-8);
+  padding: var(--space-12);
+  border-radius: var(--radius-field);
+  background: var(--surface-2);
+}
+
+.codeValue {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.18em;
+}
+
+/* Действие в сообщении. Отбито сверху, чтобы кнопка не слипалась
+   с текстом и читалась как отдельный шаг. */
+.action {
+  margin-top: var(--space-8);
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin-top: var(--space-4);
+  font-size: var(--fs-micro);
+  color: var(--text-muted);
+}
+
+.unreadMark {
+  color: var(--brand-text);
+  font-weight: var(--fw-semibold);
+}

@@ -256,6 +256,13 @@ export const USERS: AdminUser[] = buildUsers()
    Основная ежедневная работа оператора. Старые сверху: заявка, висящая
    сутки, должна быть первой. */
 
+/** Итог проверки AML. `pending` — проверка ещё идёт. */
+export type AmlVerdict = 'pass' | 'fail' | 'pending'
+
+/** Что с возвратом по непрошедшему AML поступлению.
+ *  `requested` — пользователь нажал «вернуть», деньги ещё не ушли. */
+export type RefundState = 'none' | 'requested' | 'sent'
+
 export interface AdminDeposit {
   id: string
   userId: string
@@ -266,7 +273,37 @@ export interface AdminDeposit {
   asset: string
   /** Ссылка необязательна, но без неё проверка дольше — строка помечается. */
   txLink: string | null
-  status: 'SUBMITTED' | 'CREDITED' | 'REJECTED'
+  /** HELD — деньги пришли, но AML не пройден: зачисления не было.
+   *  REFUNDED — отправлены обратно на адрес отправителя. */
+  status: 'SUBMITTED' | 'CREDITED' | 'REJECTED' | 'HELD' | 'REFUNDED'
+  /** Пришло само на выданный адрес или заведено оператором руками.
+   *  Ручные заявки остаются: автозачисление можно выключить, а старые
+   *  заявки из очереди никуда не денутся. */
+  source: 'auto' | 'manual'
+  /** Адрес, на который пришли деньги. У ручной заявки его нет. */
+  addressId: string | null
+  address: string | null
+  /** Отправитель. Нужен ровно для одного — вернуть туда, откуда пришло. */
+  fromAddress: string | null
+  /** Вердикт и оценка риска. Оценку даёт внешний сервис, мы её не считаем. */
+  amlVerdict: AmlVerdict | null
+  amlRisk: string | null
+  refund: RefundState
+  /** Комиссия сети за отправку возврата. Её удерживает сервис кошелька,
+   *  мы её не считаем — число записано готовым. */
+  refundFee: Money | null
+  /**
+   * Кто взял заявку в работу. Пока она за кем-то закреплена, второй
+   * оператор её не трогает.
+   *
+   * Это не украшение интерфейса: без такой пометки двое разбирают одну
+   * заявку одновременно и зачисляют деньги дважды. Прятать кнопки —
+   * полумера, настоящая защита на стороне сервера (см. правило в
+   * docs/flows-admin.md), но увидеть занятую заявку оператор должен
+   * до того, как начал в ней работать.
+   */
+  claimedBy: string | null
+  claimedAt: string | null
   createdAt: string
   /** Фактически полученная сумма — заполняется оператором при подтверждении. */
   received?: Money
@@ -296,9 +333,51 @@ const DEPOSIT_FIGURES: { declared: Money; fee: Money; net: Money }[] = [
   { declared: '45.00', fee: '2.68', net: '42.32' },
 ]
 
+/* Адреса выдуманные и невалидны по контрольной сумме: настоящих
+   в прототипе нет (docs/prototype.md). Пул общий для выданных адресов
+   и для поступлений — чтобы заявка и адрес в таблице сходились. */
+const ADDRESS_POOL = [
+  'TQ5nR8vK2mXpL7dYwF3jH9cB4tZaS6eNqU',
+  'TJd4nQ8mF2xV6pK1wR7yH3cB9tZaS5eNqL',
+  'TRm7xK2nQ9vL4pD8wY3jF6cB1tZaS0eNqH',
+  '0x7F4c9A2bE81dC3650aF19b7D4e2C8a05B36fE914',
+  '0x3A9dE1c47B20fF8562aD93c1E7b045F8cA216D73',
+  '0xC81eB7a4F09D23b5614aE87cD350fB92a7d1E468',
+  'UQD2k7bXnLmR4vP9cJ8tY6wE3aZqH5fN1gVxMcB7dKuT',
+  'UQBf9mN4kR7xL2vP8dJ3tY6wE1aZqH5cN0gVxMcB7dKs',
+  'TWq3nR8vK5mXpL2dYwF7jH1cB9tZaS4eNqM',
+  '0x5B2aC93eF71dA480c6E15b9D3f847aB02cD6E915',
+  'UQA7k2bXnLmR9vP4cJ1tY8wE5aZqH3fN6gVxMcB2dKuY',
+  'TPd6nQ2mF8xV4pK9wR1yH7cB3tZaS2eNqB',
+]
+
+/* Адреса отправителей — чужие кошельки, с которых пришли деньги.
+   Нужны ровно для одного: вернуть туда, откуда пришло. */
+const SENDER_POOL = [
+  'TLs9xK4nQ2vM7pD1wY8jF3cB6tZaS5eNqR',
+  '0x9D4eB2a7F31cA685b0E73d5C9f216aB84cD0E372',
+  'UQC4k9bXnLmR2vP7cJ5tY1wE8aZqH6fN3gVxMcB4dKuW',
+  'TKm2nR7vK9mXpL3dYwF1jH8cB5tZaS7eNqV',
+  '0x2E8bD53aC90fB147d6A29c8E4b703fA51cD9E286',
+  'TBv8xK1nQ6vL9pD4wY2jF7cB3tZaS8eNqJ',
+  '0xA14cF86bE23dD709a5B48e1C7f920bD63aE5C104',
+  'UQE1k6bXnLmR5vP3cJ9tY4wE7aZqH2fN8gVxMcB9dKuP',
+]
+
+/* Очередь намеренно смешанная. Автозачисление включено, но очередь
+   не исчезает: часть поступлений не прошла AML и ждёт решения, часть
+   заведена оператором руками (пришло не на выданный адрес, прислали
+   не ту монету, перевод из обменника). Одна только «счастливая»
+   автоматика скрыла бы от руководства ровно те случаи, ради которых
+   оператор и нужен. */
 export const DEPOSITS: AdminDeposit[] = Array.from({ length: 14 }, (_, i) => {
   const user = pick(USERS, i * 7 + 2)
   const figures = pick(DEPOSIT_FIGURES, i)
+  const manual = i % 7 === 3
+  const held = i % 5 === 2
+  const asset = i % 5 === 3 ? 'USDC' : 'USDT'
+  const network = pick(['Tron (TRC-20)', 'Ethereum (ERC-20)', 'TON', 'BNB Smart Chain (BEP-20)'], i)
+
   return {
     id: `dep-${String(i + 1).padStart(3, '0')}`,
     userId: user.id,
@@ -307,10 +386,25 @@ export const DEPOSITS: AdminDeposit[] = Array.from({ length: 14 }, (_, i) => {
     declared: figures.declared,
     fee: figures.fee,
     net: figures.net,
-    network: pick(['Tron (TRC-20)', 'Ethereum (ERC-20)', 'TON', 'BNB Smart Chain (BEP-20)'], i),
-    asset: i % 5 === 3 ? 'USDC' : 'USDT',
+    network,
+    asset,
     txLink: i % 4 === 1 ? null : `https://tronscan.org/#/transaction/9f2c${i}a7b4e`,
-    status: 'SUBMITTED',
+    status: held ? 'HELD' : 'SUBMITTED',
+    source: manual ? 'manual' : 'auto',
+    addressId: manual ? null : `adr-${String((i % 36) + 1).padStart(3, '0')}`,
+    address: manual ? null : pick(ADDRESS_POOL, i * 3 + 1),
+    fromAddress: manual ? null : pick(SENDER_POOL, i * 5),
+    amlVerdict: manual ? null : held ? 'fail' : 'pass',
+    /* Оценка риска приходит от сервиса проверки. Мы её не считаем
+       и не интерпретируем числом — только сравниваем с порогом. */
+    amlRisk: manual ? null : held ? pick(['82', '91', '74'], i) : pick(['4', '11', '23', '2'], i),
+    refund: held && i % 10 === 2 ? 'requested' : 'none',
+    refundFee: held ? pick(['1.40', '0.90', '2.10'], i) : null,
+    /* Одна заявка уже у другого оператора: на ней видно, что бывает,
+       когда очередь разбирают вдвоём. Имя записано строкой — список
+       операторов объявлен ниже по файлу и на этот момент ещё не создан. */
+    claimedBy: i === 1 ? 'Ковалёва Марина' : null,
+    claimedAt: i === 1 ? '2026-10-05T14:05:00Z' : null,
     createdAt: `2026-10-0${(i % 5) + 1}T${String(8 + (i % 10)).padStart(2, '0')}:${String((i * 7) % 60).padStart(2, '0')}:00Z`,
   }
 })
@@ -579,18 +673,197 @@ export const FEES = {
   preview: { gross: '1 000.00', fee: '17.00', net: '983.00' },
 }
 
-export interface NetworkAddress {
+/* --- Выручка ------------------------------------------------------------------
+   Главное число для руководства: сколько мы заработали на комиссиях и
+   сколько крипты через нас прошло.
+
+   Все величины посчитаны заранее и разложены по разрезам — по холдингу
+   целиком и по каждой компании. Складывать их в коде нельзя: сумма
+   комиссий это деньги, и считаться она будет один раз, на этапе 1,
+   из леджера и с тестами (docs/prototype.md). */
+
+export interface RevenueSlice {
+  /** Прибыль с комиссий за период. */
+  profit: Money
+  fromDeposits: Money
+  fromWithdrawals: Money
+  /** Сколько крипты пришло на наши адреса за период. */
+  inflow: Money
+  /** Разбивка прихода по сетям. Доля — тоже готовое число. */
+  networks: { id: string; name: string; asset: string; amount: Money; share: string }[]
+}
+
+export const REVENUE: Record<string, RevenueSlice> = {
+  all: {
+    profit: '18 420.00',
+    fromDeposits: '12 960.00',
+    fromWithdrawals: '5 460.00',
+    inflow: '864 300.00',
+    networks: [
+      { id: 'trc20', name: 'Tron (TRC-20)', asset: 'USDT', amount: '512 800.00', share: '59' },
+      { id: 'erc20', name: 'Ethereum (ERC-20)', asset: 'USDT', amount: '214 500.00', share: '25' },
+      { id: 'ton', name: 'TON', asset: 'USDT', amount: '84 000.00', share: '10' },
+      { id: 'erc20-usdc', name: 'Ethereum (ERC-20)', asset: 'USDC', amount: '53 000.00', share: '6' },
+    ],
+  },
+  alpha: {
+    profit: '9 870.00',
+    fromDeposits: '7 120.00',
+    fromWithdrawals: '2 750.00',
+    inflow: '468 200.00',
+    networks: [
+      { id: 'trc20', name: 'Tron (TRC-20)', asset: 'USDT', amount: '301 400.00', share: '64' },
+      { id: 'erc20', name: 'Ethereum (ERC-20)', asset: 'USDT', amount: '122 800.00', share: '26' },
+      { id: 'ton', name: 'TON', asset: 'USDT', amount: '44 000.00', share: '10' },
+    ],
+  },
+  beta: {
+    profit: '4 310.00',
+    fromDeposits: '3 040.00',
+    fromWithdrawals: '1 270.00',
+    inflow: '206 700.00',
+    networks: [
+      { id: 'trc20', name: 'Tron (TRC-20)', asset: 'USDT', amount: '128 900.00', share: '62' },
+      { id: 'erc20-usdc', name: 'Ethereum (ERC-20)', asset: 'USDC', amount: '53 000.00', share: '26' },
+      { id: 'ton', name: 'TON', asset: 'USDT', amount: '24 800.00', share: '12' },
+    ],
+  },
+  gamma: {
+    profit: '2 640.00',
+    fromDeposits: '1 820.00',
+    fromWithdrawals: '820.00',
+    inflow: '121 400.00',
+    networks: [
+      { id: 'trc20', name: 'Tron (TRC-20)', asset: 'USDT', amount: '62 500.00', share: '51' },
+      { id: 'erc20', name: 'Ethereum (ERC-20)', asset: 'USDT', amount: '58 900.00', share: '49' },
+    ],
+  },
+  delta: {
+    profit: '1 600.00',
+    fromDeposits: '980.00',
+    fromWithdrawals: '620.00',
+    inflow: '68 000.00',
+    networks: [
+      { id: 'trc20', name: 'Tron (TRC-20)', asset: 'USDT', amount: '52 800.00', share: '78' },
+      { id: 'ton', name: 'TON', asset: 'USDT', amount: '15 200.00', share: '22' },
+    ],
+  },
+}
+
+/* --- Автоматическое зачисление ------------------------------------------------
+   Переключатель живёт рядом с комиссиями и меняется тем же правом: это
+   одна настройка денег — сколько удержать и зачислять ли без оператора.
+
+   Выключенный переключатель возвращает прежний порядок: поступление
+   попадает в очередь и ждёт оператора. Поэтому очередь заявок никуда
+   не девается и при включённом автозачислении.
+
+   Ни одно число здесь не считается: порог риска приходит от сервиса
+   проверки и только сравнивается с границей, а суммы к зачислению
+   лежат готовыми в заявках (docs/prototype.md). */
+
+export const CREDITING = {
+  /** Зачислять без участия оператора. */
+  auto: true,
+  /** Выше этой оценки риска поступление не зачисляется, а удерживается.
+      Шкала — внешнего сервиса, своей у нас нет. */
+  amlMaxRisk: '70',
+  /** Сколько подтверждений сети ждём, прежде чем считать деньги пришедшими. */
+  confirmations: '3',
+  /**
+   * Что делать, когда сервис проверки молчит.
+   *
+   * `false` — поступления копятся и ждут оператора: непроверенные деньги
+   * не зачисляются. Это значение по умолчанию, и оно осознанное: сбой
+   * у стороннего сервиса не должен превращаться в канал, по которому
+   * к нам заходит что угодно.
+   *
+   * `true` — зачислять всё равно. Решение про деньги, а не про удобство,
+   * поэтому переключатель отдельный и стоит рядом с автозачислением.
+   */
+  creditWithoutAml: false,
+}
+
+/* --- Крипто-адреса пользователей ---------------------------------------------
+   Адрес заводит себе сам пользователь, и адрес закрепляется за ним: по
+   поступлению на адрес система знает, чей это платёж, и зачисляет без
+   оператора. Общих адресов «на всех» больше нет — по такому адресу
+   отправителя не отличить.
+
+   Адрес, на котором поступление не прошло AML, уничтожается после
+   возврата и больше не выдаётся никогда. Пользователь заводит новый.
+   Причина простая: адрес уже засвечен в сомнительной цепочке, и следующее
+   поступление на него будет тянуть за собой ту же историю. */
+
+export type AddressStatus = 'ACTIVE' | 'BURNED'
+
+export interface CryptoAddress {
   id: string
   address: string
   memo: string | null
-  label: string | null
-  isActive: boolean
-  /** Сколько заявок на пополнение ссылается на адрес. Число записано
-      руками: считать его в прототипе нечем и незачем. Адрес со ссылками
-      удалить нельзя — иначе прошлые заявки перестанут объясняться. */
-  usedInDeposits: number
+  asset: string
+  network: string
+  networkId: string
+  userId: string
+  userName: string
+  companyId: string
+  createdAt: string
+  status: AddressStatus
+  /** Почему адрес уничтожен. Код, не текст (CLAUDE.md, правило 3e). */
+  burnReasonCode: string | null
+  /** Сколько поступлений пришло на адрес. Число записано руками. */
+  deposits: number
+  lastDepositAt: string | null
+  /** Вердикт последней проверки по этому адресу. */
+  amlVerdict: AmlVerdict | null
 }
 
+export const CRYPTO_ADDRESSES: CryptoAddress[] = Array.from({ length: 36 }, (_, i) => {
+  const user = pick(USERS, i * 5 + 1)
+  const asset = i % 4 === 3 ? 'USDC' : 'USDT'
+  const net = pick(
+    [
+      { id: 'trc20', name: 'Tron (TRC-20)' },
+      { id: 'erc20', name: 'Ethereum (ERC-20)' },
+      { id: 'ton', name: 'TON' },
+    ],
+    i,
+  )
+  const burned = i % 9 === 4
+  const used = i % 3 !== 1
+
+  return {
+    id: `adr-${String(i + 1).padStart(3, '0')}`,
+    address: pick(ADDRESS_POOL, i),
+    memo: net.id === 'ton' ? String(48201937 + i) : null,
+    asset,
+    network: net.name,
+    networkId: net.id,
+    userId: user.id,
+    userName: user.name,
+    companyId: user.companyId,
+    createdAt: `2026-09-${String(10 + (i % 20)).padStart(2, '0')}T${String(9 + (i % 9)).padStart(2, '0')}:${String((i * 11) % 60).padStart(2, '0')}:00Z`,
+    status: burned ? 'BURNED' : 'ACTIVE',
+    burnReasonCode: burned ? 'amlFailed' : null,
+    deposits: used ? (i % 4) + 1 : 0,
+    lastDepositAt: used ? `2026-10-0${(i % 5) + 1}T${String(8 + (i % 10)).padStart(2, '0')}:12:00Z` : null,
+    amlVerdict: burned ? 'fail' : used ? 'pass' : null,
+  }
+})
+
+/**
+ * Сеть и монета, открытые к пополнению.
+ *
+ * Адресов здесь больше нет. Раньше оператор заводил общий адрес на всех —
+ * теперь адрес заводит себе каждый пользователь, и за ним он и закреплён
+ * (см. CRYPTO_ADDRESSES). По общему адресу отправителя не отличить,
+ * а значит и зачислить без оператора нельзя.
+ *
+ * Что осталось оператору: открыть или закрыть пару «сеть + монета»,
+ * загрузить значок монеты и задать минимальную сумму. Закрытая пара
+ * исчезает из выбора у пользователей, но остаётся в истории прошлых
+ * поступлений.
+ */
 export interface AdminNetwork {
   id: string
   name: string
@@ -600,7 +873,16 @@ export interface AdminNetwork {
   /** Иконка монеты. Загружается оператором; в прототипе файлов нет,
       и на её месте кружок с тикером того же размера. */
   iconUrl: string | null
-  addresses: NetworkAddress[]
+  /** Минимальная сумма для этой пары. Меньше — деньги придут, но
+      зачисление уйдёт оператору: в мелких суммах комиссия сети съедает
+      перевод целиком. */
+  minDeposit: Money
+  /** Применяется ли минимум вообще. Отдельный переключатель: «ноль»
+      и «минимума нет» — разные вещи, и держать их одним полем значит
+      рано или поздно отключить минимум опечаткой. */
+  minDepositOn: boolean
+  /** Сколько адресов выдано пользователям. Число записано руками. */
+  issuedAddresses: number
 }
 
 export const NETWORKS: AdminNetwork[] = [
@@ -611,24 +893,9 @@ export const NETWORKS: AdminNetwork[] = [
     requiresMemo: false,
     isActive: true,
     iconUrl: null,
-    addresses: [
-      {
-        id: 'a1',
-        address: 'TQ5nR8vK2mXpL7dYwF3jH9cB4tZaS6eNqU',
-        memo: null,
-        label: 'Основной',
-        isActive: true,
-        usedInDeposits: 9,
-      },
-      {
-        id: 'a2',
-        address: 'TJd4nQ8mF2xV6pK1wR7yH3cB9tZaS5eNqL',
-        memo: null,
-        label: 'Резервный',
-        isActive: false,
-        usedInDeposits: 0,
-      },
-    ],
+    minDeposit: '100.00',
+    minDepositOn: true,
+    issuedAddresses: 14,
   },
   {
     id: 'erc20',
@@ -637,16 +904,9 @@ export const NETWORKS: AdminNetwork[] = [
     requiresMemo: false,
     isActive: true,
     iconUrl: null,
-    addresses: [
-      {
-        id: 'a3',
-        address: '0x7F4c9A2bE81dC3650aF19b7D4e2C8a05B36fE914',
-        memo: null,
-        label: 'Основной',
-        isActive: true,
-        usedInDeposits: 3,
-      },
-    ],
+    minDeposit: '250.00',
+    minDepositOn: true,
+    issuedAddresses: 9,
   },
   {
     id: 'ton',
@@ -655,16 +915,20 @@ export const NETWORKS: AdminNetwork[] = [
     requiresMemo: true,
     isActive: true,
     iconUrl: null,
-    addresses: [
-      {
-        id: 'a4',
-        address: 'UQD2k7bXnLmR4vP9cJ8tY6wE3aZqH5fN1gVxMcB7dKuT',
-        memo: '48201937',
-        label: 'Основной',
-        isActive: true,
-        usedInDeposits: 2,
-      },
-    ],
+    minDeposit: '100.00',
+    minDepositOn: true,
+    issuedAddresses: 8,
+  },
+  {
+    id: 'erc20-usdc',
+    name: 'Ethereum (ERC-20)',
+    asset: 'USDC',
+    requiresMemo: false,
+    isActive: true,
+    iconUrl: null,
+    minDeposit: '250.00',
+    minDepositOn: true,
+    issuedAddresses: 5,
   },
   {
     id: 'bep20',
@@ -673,12 +937,14 @@ export const NETWORKS: AdminNetwork[] = [
     requiresMemo: false,
     isActive: false,
     iconUrl: null,
-    addresses: [],
+    minDeposit: '100.00',
+    minDepositOn: false,
+    issuedAddresses: 0,
   },
 ]
 
-/** Монеты, доступные при заведении адреса. Список закрытый: монета,
-    которой нет у эмитента, зачислена не будет. */
+/** Монеты, доступные к пополнению. Список закрытый: монета, которой нет
+    у эмитента, зачислена не будет. */
 export const ASSETS = ['USDT', 'USDC'] as const
 
 /* --- Состояние системы и аудит ----------------------------------------------- */
@@ -687,9 +953,25 @@ export const SYSTEM = {
   eventLagSeconds: '14',
   unprocessedEvents: '3',
   lastPoolRead: '2026-10-05T14:02:00Z',
+  /* У каждой строки есть, куда перейти: список проблем без перехода
+     к самой проблеме заставляет оператора искать её руками. */
   pendingTransfers: [
-    { id: 'tr-1', userName: USERS[12]!.name, amount: '200.00', state: 'SOURCE_REDUCED', at: '2026-10-05T13:41:00Z' },
-    { id: 'tr-2', userName: USERS[48]!.name, amount: '1 500.00', state: 'PENDING', at: '2026-10-05T12:08:00Z' },
+    {
+      id: 'tr-1',
+      userId: USERS[12]!.id,
+      userName: USERS[12]!.name,
+      amount: '200.00',
+      state: 'SOURCE_REDUCED',
+      at: '2026-10-05T13:41:00Z',
+    },
+    {
+      id: 'tr-2',
+      userId: USERS[48]!.id,
+      userName: USERS[48]!.name,
+      amount: '1 500.00',
+      state: 'PENDING',
+      at: '2026-10-05T12:08:00Z',
+    },
   ],
   stuckCalls: [
     { id: 'sc-1', action: 'POST /cardholders/:id/cards', requestId: 'req_8KQ2M4VT9WAH', at: '2026-10-05T11:55:00Z' },
@@ -705,6 +987,40 @@ export const SYSTEM = {
     { id: 'r-2', code: 'balancesPools', ok: false },
   ],
   throttling: false,
+  /* Внешние сервисы, от которых зависит автозачисление. Ключей доступа
+     здесь нет и не будет: они живут в переменных окружения и в интерфейс
+     не выводятся ни в каком виде (CLAUDE.md, правило 7). Оператору нужно
+     другое — работает сервис или нет, и когда отвечал в последний раз.
+
+     Название узла — данные, они не переводятся. Подпись сервиса — код. */
+  services: [
+    {
+      id: 'svc-oxen',
+      code: 'oxen',
+      host: 'api.sbx.oxen.finance',
+      ok: true,
+      lastAt: '2026-10-05T14:02:00Z',
+      noteCode: null,
+    },
+    {
+      id: 'svc-addresses',
+      code: 'addresses',
+      host: 'new.cryptocurrencyapi.net',
+      ok: true,
+      lastAt: '2026-10-05T13:58:00Z',
+      noteCode: null,
+    },
+    {
+      id: 'svc-aml',
+      code: 'aml',
+      host: 'getblock.net',
+      ok: false,
+      lastAt: '2026-10-05T13:11:00Z',
+      /* Пока проверка недоступна, зачислять нельзя: непроверенное
+         поступление копится в очереди, а не зачисляется «на доверии». */
+      noteCode: 'amlUnavailable',
+    },
+  ],
 }
 
 export interface AuditEntry {
@@ -726,7 +1042,7 @@ export const AUDIT: AuditEntry[] = Array.from({ length: 60 }, (_, i) => {
   // Через pick, а не по голому индексу: 60 записей на 100 пользователях
   // с шагом 3 уходят за границу массива, и `!` это молча пропускает.
   const user = pick(USERS, i * 3 + 5)
-  const kind = i % 7
+  const kind = i % 10
   /* Действие, объект и причина хранятся КОДАМИ, а не готовым текстом
      (CLAUDE.md, правило 3e): иначе смена языка не перечитывает историю,
      и оператор с пользователем не могут увидеть одно событие каждый на
@@ -739,6 +1055,12 @@ export const AUDIT: AuditEntry[] = Array.from({ length: 60 }, (_, i) => {
     { action: 'rightsChanged', type: 'operator', highlight: true },
     { action: 'feeOverridden', type: 'user', highlight: true },
     { action: 'cardFrozen', type: 'card', highlight: false },
+    /* Автозачисление и уничтожение адреса — события того же веса, что
+       правка ставки: одно меняет порядок движения денег для всех, другое
+       отрезает адрес навсегда. Оба помечены. */
+    { action: 'autoCreditToggled', type: 'settings', highlight: true },
+    { action: 'addressBurned', type: 'address', highlight: true },
+    { action: 'refundSent', type: 'deposit', highlight: true },
   ]
   const entry = actions[kind]!
 
@@ -768,9 +1090,14 @@ export const AUDIT: AuditEntry[] = Array.from({ length: 60 }, (_, i) => {
 export type ExchangeDirection = 'out' | 'in'
 export type ExchangeOutcome = 'ok' | 'retried' | 'failed'
 
+/** С кем шёл обмен. Сервисов стало три, и разбирать их вперемешку
+ *  нельзя: у выпуска карты и у проверки AML разные поводы для разбора. */
+export type ExchangeService = 'oxen' | 'addresses' | 'aml'
+
 export interface ExchangeEntry {
   id: string
   at: string
+  service: ExchangeService
   direction: ExchangeDirection
   /** Для исходящих — метод и путь. Для входящих — тип события. */
   method: string
@@ -969,9 +1296,9 @@ function responseBody(path: string, user: AdminUser, i: number, eventType?: stri
   )
 }
 
-/** Журнал обмена. Строки разложены по кругу, суммы в телах — готовые
+/** Обмен с эмитентом. Строки разложены по кругу, суммы в телах — готовые
     строки из тех же демо-данных. Ничего не вычисляется. */
-export const EXCHANGE_LOG: ExchangeEntry[] = Array.from({ length: 48 }, (_, i) => {
+const OXEN_LOG: ExchangeEntry[] = Array.from({ length: 48 }, (_, i) => {
   const outgoing = i % 3 !== 2
   const shape = outgoing ? pick(OUTGOING, i) : pick(INCOMING, i)
   const user = pick(USERS, i * 7 + 3)
@@ -980,6 +1307,7 @@ export const EXCHANGE_LOG: ExchangeEntry[] = Array.from({ length: 48 }, (_, i) =
   return {
     id: `exc-${String(i + 1).padStart(3, '0')}`,
     at: `2026-10-0${(i % 5) + 1}T${String(7 + (i % 13)).padStart(2, '0')}:${String((i * 17) % 60).padStart(2, '0')}:00Z`,
+    service: 'oxen' as ExchangeService,
     direction: outgoing ? 'out' : 'in',
     method: shape.method,
     path: shape.path,
@@ -993,6 +1321,149 @@ export const EXCHANGE_LOG: ExchangeEntry[] = Array.from({ length: 48 }, (_, i) =
     noteCode: status && NOTED_STATUSES.includes(status) ? status : null,
   }
 })
+
+/* Обмен с сервисом адресов и с проверкой AML.
+
+   Тела показаны уже вычищенными: ключ доступа к сервису в журнал не
+   попадает никогда (CLAUDE.md, правило 7). Проверка AML возвращает
+   оценку риска — её мы не считаем и не пересчитываем, только сравниваем
+   с порогом из настроек. */
+const SERVICE_LOG: ExchangeEntry[] = [
+  {
+    id: 'exc-101',
+    at: '2026-10-05T13:58:00Z',
+    service: 'addresses',
+    direction: 'out',
+    method: 'GET',
+    path: '/v2/address/new',
+    status: '200',
+    durationMs: '412',
+    requestId: 'req_ADR7KQD82XFM4VT',
+    companyId: COMPANIES[0]!.id,
+    outcome: 'ok',
+    request: JSON.stringify({ currency: 'USDT.TRC20', externalId: 'usr-014' }, null, 2),
+    response: JSON.stringify(
+      { result: { address: 'TQ5nR8vK2mXpL7dYwF3jH9cB4tZaS6eNqU', tag: null } },
+      null,
+      2,
+    ),
+    noteCode: null,
+  },
+  {
+    id: 'exc-102',
+    at: '2026-10-05T13:41:00Z',
+    service: 'addresses',
+    direction: 'in',
+    method: 'EVENT',
+    path: 'payment.received',
+    status: null,
+    durationMs: '18',
+    requestId: 'req_ADR2P9ZX4LT7BQC',
+    companyId: COMPANIES[0]!.id,
+    outcome: 'ok',
+    request: null,
+    response: JSON.stringify(
+      {
+        address: 'TQ5nR8vK2mXpL7dYwF3jH9cB4tZaS6eNqU',
+        from: 'TLs9xK4nQ2vM7pD1wY8jF3cB6tZaS5eNqR',
+        currency: 'USDT.TRC20',
+        amount: '500.00',
+        confirmations: 3,
+      },
+      null,
+      2,
+    ),
+    noteCode: null,
+  },
+  {
+    id: 'exc-103',
+    at: '2026-10-05T13:41:20Z',
+    service: 'aml',
+    direction: 'out',
+    method: 'POST',
+    path: '/aml/check',
+    status: '200',
+    durationMs: '1 840',
+    requestId: 'req_AML8RJ5KD3WN6YF',
+    companyId: COMPANIES[0]!.id,
+    outcome: 'ok',
+    request: JSON.stringify(
+      { chain: 'tron', address: 'TLs9xK4nQ2vM7pD1wY8jF3cB6tZaS5eNqR', direction: 'in' },
+      null,
+      2,
+    ),
+    response: JSON.stringify({ riskScore: 4, signals: [] }, null, 2),
+    noteCode: null,
+  },
+  {
+    id: 'exc-104',
+    at: '2026-10-05T12:30:00Z',
+    service: 'aml',
+    direction: 'out',
+    method: 'POST',
+    path: '/aml/check',
+    status: '200',
+    durationMs: '2 110',
+    requestId: 'req_AMLQ4TB7VC2XM9L',
+    companyId: COMPANIES[1]!.id,
+    outcome: 'ok',
+    request: JSON.stringify(
+      { chain: 'ethereum', address: '0x9D4eB2a7F31cA685b0E73d5C9f216aB84cD0E372', direction: 'in' },
+      null,
+      2,
+    ),
+    response: JSON.stringify({ riskScore: 91, signals: ['mixer', 'sanctions_proximity'] }, null, 2),
+    noteCode: 'amlFailed',
+  },
+  {
+    id: 'exc-105',
+    at: '2026-10-05T13:11:00Z',
+    service: 'aml',
+    direction: 'out',
+    method: 'POST',
+    path: '/aml/check',
+    status: '504',
+    durationMs: '30 000',
+    requestId: 'req_AML3PLQ8ZR5ZVM9',
+    companyId: COMPANIES[2]!.id,
+    outcome: 'failed',
+    request: JSON.stringify(
+      { chain: 'tron', address: 'TKm2nR7vK9mXpL3dYwF1jH8cB5tZaS7eNqV', direction: 'in' },
+      null,
+      2,
+    ),
+    response: JSON.stringify({ error: 'gateway timeout' }, null, 2),
+    noteCode: 'amlUnavailable',
+  },
+  {
+    id: 'exc-106',
+    at: '2026-10-04T18:22:00Z',
+    service: 'addresses',
+    direction: 'out',
+    method: 'POST',
+    path: '/v2/send',
+    status: '200',
+    durationMs: '920',
+    requestId: 'req_ADR5KD3WN6YF0US',
+    companyId: COMPANIES[1]!.id,
+    outcome: 'ok',
+    /* Возврат отправителю по непрошедшему AML поступлению. */
+    request: JSON.stringify(
+      {
+        currency: 'USDT.ERC20',
+        to: '0x9D4eB2a7F31cA685b0E73d5C9f216aB84cD0E372',
+        amount: '1 200.00',
+      },
+      null,
+      2,
+    ),
+    response: JSON.stringify({ result: { txId: '0x4b1f…c7a2' } }, null, 2),
+    noteCode: 'refundSent',
+  },
+]
+
+/** Весь обмен с внешними сервисами, в одном журнале. */
+export const EXCHANGE_LOG: ExchangeEntry[] = [...OXEN_LOG, ...SERVICE_LOG]
 
 /* --- Производные выборки для дашборда -----------------------------------------
    Это ВЫБОРКИ, а не расчёты: фильтрация списка по признаку деньги не считает. */

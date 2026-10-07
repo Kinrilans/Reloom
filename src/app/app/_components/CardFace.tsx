@@ -4,6 +4,7 @@ import { Clock, Snowflake } from 'lucide-react'
 import { Amount, Card as Surface, Logo } from '@/ui'
 import { useT } from '@/i18n'
 import type { Card } from '@/fixtures/types'
+import { CardShader } from './CardShader'
 import styles from './CardFace.module.css'
 
 export function CardFace({
@@ -48,6 +49,11 @@ export function CardFace({
         }
       }}
     >
+      {/* Переливание — только на работающей карте. На отменённой оно
+          выглядело бы как действующая (там плоская серая поверхность),
+          а на замороженной отвлекало бы от причины заморозки. */}
+      {canceled || inactive ? null : <CardShader cardId={card.id} />}
+
       <div className={styles.inner}>
         <div className={styles.top}>
           <Logo variant="mark" tone="current" height={24} />

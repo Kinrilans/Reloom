@@ -1,0 +1,91 @@
+/* Первый экран приложения: знак наверху, выбор способа входа внизу.
+
+   Раскладка не «по центру», а «сверху и снизу» нарочно. Вверху человек
+   должен понять, куда попал, внизу — нажать, не перехватывая телефон:
+   до середины экрана большой палец не дотягивается. Между ними
+   фирменное свечение, которое и отличает этот экран от пустой формы. */
+
+.screen {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  /* Содержимое лежит поверх свечения: позиционированные элементы рисуются
+     после обычных блоков, и без этого свечение накрыло бы кнопки. */
+}
+
+/* Свечение фирменного градиента в нижней половине.
+
+   Разлито до кромок экрана отрицательными полями: полотно держит отступ
+   16px, а свечение упирается в края, иначе по бокам видны тёмные полосы
+   и оно читается как картинка, а не как подсветка.
+
+   Кверху гаснет маской. Без неё у заливки виден ровный верхний край,
+   он пересекает знак, и получается не свечение, а прямоугольник
+   с логотипом на нём. */
+.gradient {
+  position: absolute;
+  inset-inline: calc(var(--space-16) * -1);
+  top: 18%;
+  bottom: calc(var(--space-32) * -1);
+  pointer-events: none;
+  /* Два пятна, а не сплошная заливка: светлое ближе к низу — источник,
+     тёмное у самой кромки — глубина. Сплошная заливка читается как
+     фиолетовая подложка, а не как свечение. */
+  background:
+    radial-gradient(
+      88% 50% at 50% 70%,
+      color-mix(in srgb, var(--brand-light) 95%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      125% 72% at 50% 104%,
+      color-mix(in srgb, var(--brand-dark) 96%, transparent),
+      transparent 70%
+    );
+  /* Кверху гаснет. Без маски у заливки виден ровный верхний край, он
+     пересекает знак, и получается не свечение, а прямоугольник
+     с логотипом на нём. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 46%);
+  mask-image: linear-gradient(to bottom, transparent, black 46%);
+}
+
+.head {
+  position: relative;
+  padding-top: var(--space-8);
+}
+
+/* Низ экрана. `margin-top: auto` прижимает блок к нижней кромке и
+   оставляет свечению всю середину. */
+.foot {
+  position: relative;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-top: var(--space-32);
+}
+
+.title {
+  font-size: var(--fs-title);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-title);
+  letter-spacing: -0.02em;
+  color: var(--on-brand);
+}
+
+/* Подпись лежит на фирменной заливке, поэтому цвет берётся от неё,
+   а не от темы: --text-muted на фиолетовом не читается. */
+.text {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: color-mix(in srgb, var(--on-brand) 78%, transparent);
+}
+
+.buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding-top: var(--space-16);
+}

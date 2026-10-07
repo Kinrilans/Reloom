@@ -13,35 +13,63 @@
  * Номера карт выдуманные и невалидны по контрольной сумме.
  */
 
-import type { Card, Network, Operation, Scenario } from './types'
+import type {
+  AppNotification,
+  Asset,
+  Card,
+  IncomingDeposit,
+  Network,
+  Operation,
+  Scenario,
+} from './types'
 
+/**
+ * Сети и монеты, открытые оператором в админке. Повторяют активные записи
+ * из src/fixtures/admin.ts: пользователь видит ровно то, что оператор
+ * завёл, и ничего сверх.
+ *
+ * Монета у сети своя: один и тот же Ethereum принимает и USDT, и USDC, и
+ * это разные адреса. Перевод не той монетой теряется так же, как перевод
+ * не в той сети, поэтому выбирается именно пара «монета + сеть».
+ */
 export const NETWORKS: Network[] = [
   {
-    id: 'trc20',
+    id: 'trc20-usdt',
     name: 'Tron (TRC-20)',
     asset: 'USDT',
+    iconUrl: null,
     address: 'TQ5nR8vK2mXpL7dYwF3jH9cB4tZaS6eNqU',
   },
   {
-    id: 'erc20',
+    id: 'erc20-usdt',
     name: 'Ethereum (ERC-20)',
     asset: 'USDT',
+    iconUrl: null,
     address: '0x7F4c9A2bE81dC3650aF19b7D4e2C8a05B36fE914',
   },
   {
-    id: 'bep20',
-    name: 'BNB Smart Chain (BEP-20)',
-    asset: 'USDT',
-    address: '0x3A9dE1c47B20fF8562aD93c1E7b045F8cA216D73',
-  },
-  {
-    id: 'ton',
+    id: 'ton-usdt',
     name: 'TON',
     asset: 'USDT',
-    address: 'UQD2k7bXnLmR4vP9сJ8tY6wE3aZqH5fN1gVxMcB7dKuT',
+    iconUrl: null,
+    address: 'UQD2k7bXnLmR4vP9cJ8tY6wE3aZqH5fN1gVxMcB7dKuT',
     memo: '48201937',
     memoLabel: 'Memo',
   },
+  {
+    id: 'erc20-usdc',
+    name: 'Ethereum (ERC-20)',
+    asset: 'USDC',
+    iconUrl: null,
+    address: '0x3A9dE1c47B20fF8562aD93c1E7b045F8cA216D73',
+  },
+]
+
+/** Монеты в порядке показа. Список закрытый: монета, которой нет
+ *  у эмитента, зачислена не будет (docs/flows-user.md). */
+export const ASSETS: Asset[] = [
+  { id: 'USDT', name: 'Tether', iconUrl: null },
+  { id: 'USDC', name: 'USD Coin', iconUrl: null },
 ]
 
 /* --- Операции -------------------------------------------------------------- */
@@ -270,6 +298,76 @@ const BASE = {
   profileStatus: 'APPROVED' as const,
 }
 
+/* --- Поступления в работе -----------------------------------------------------
+   Транзакцию на адрес система видит сама, ещё до того как она
+   подтвердится. Пользователю это показывается сразу: деньги уже ушли
+   с его кошелька, и до зачисления он не должен гадать, дошли они или нет. */
+
+const INCOMING_CONFIRMING: IncomingDeposit = {
+  id: 'in-1',
+  status: 'confirming',
+  amount: '500.00',
+  asset: 'USDT',
+  network: 'Tron (TRC-20)',
+  confirmations: '1',
+  confirmationsNeeded: '3',
+  from: 'TLs9xK4nQ2vM7pD1wY8jF3cB6tZaS5eNqR',
+  txLink: 'https://tronscan.org/#/transaction/9f2c1a7b4e',
+  startedAt: '2026-10-05T14:02:00Z',
+  fee: '9.50',
+  net: '490.50',
+}
+
+/* Второе поступление, в другой сети и на другом шаге: по списку должно
+   быть видно, что шаги у них разные. */
+const INCOMING_CHECKING: IncomingDeposit = {
+  id: 'in-3',
+  status: 'checking',
+  amount: '250.00',
+  asset: 'USDC',
+  network: 'Ethereum (ERC-20)',
+  confirmations: '14',
+  confirmationsNeeded: '12',
+  from: '0x2E8bD53aC90fB147d6A29c8E4b703fA51cD9E286',
+  txLink: 'https://etherscan.io/tx/0x8a2d41bc',
+  startedAt: '2026-10-05T13:20:00Z',
+  fee: '5.75',
+  net: '244.25',
+}
+
+const INCOMING_REJECTED: IncomingDeposit = {
+  id: 'in-2',
+  status: 'rejected',
+  amount: '1 200.00',
+  asset: 'USDT',
+  network: 'Ethereum (ERC-20)',
+  confirmations: '12',
+  confirmationsNeeded: '3',
+  from: '0x9D4eB2a7F31cA685b0E73d5C9f216aB84cD0E372',
+  txLink: 'https://etherscan.io/tx/0x4b1fc7a2',
+  startedAt: '2026-10-05T18:40:00Z',
+  fee: '0.00',
+  net: '0.00',
+}
+
+/**
+ * Готовые пары «отправите → удержим → зачислится».
+ *
+ * Это и есть калькулятор пополнения: суммы подготовлены заранее, в коде
+ * не считается ничего. Живой пересчёт произвольной суммы появится на
+ * этапе 1 вместе с леджером и тестами (docs/prototype.md, правило 3f) —
+ * комиссия, посчитанная «на глаз, чтобы показать», переживает прототип
+ * и всплывает уже на реальных деньгах.
+ *
+ * Значения сходятся со ставкой из админки: 150 б.п. + 2.00 USD.
+ */
+export const DEPOSIT_TABLE = [
+  { gross: '100.00', fee: '3.50', net: '96.50' },
+  { gross: '500.00', fee: '9.50', net: '490.50' },
+  { gross: '1 000.00', fee: '17.00', net: '983.00' },
+  { gross: '5 000.00', fee: '77.00', net: '4 923.00' },
+]
+
 export const SCENARIOS: Record<string, Scenario> = {
   /** Основной: две активные карты, обычная работа. */
   default: {
@@ -279,6 +377,29 @@ export const SCENARIOS: Record<string, Scenario> = {
     balance: '1 240.00',
     cards: [PRIMARY, CHILD],
     operations: SPEND_OPERATIONS,
+    incoming: [INCOMING_CONFIRMING, INCOMING_CHECKING],
+  },
+
+  /** Поступление не прошло проверку: деньги не зачислены и ждут возврата. */
+  incomingRejected: {
+    ...BASE,
+    id: 'incomingRejected',
+    label: 'Поступление не прошло проверку',
+    balance: '1 240.00',
+    cards: [PRIMARY, CHILD],
+    operations: SPEND_OPERATIONS,
+    incoming: [INCOMING_REJECTED],
+  },
+
+  /** Подтверждений хватило, идёт проверка происхождения средств. */
+  incomingChecking: {
+    ...BASE,
+    id: 'incomingChecking',
+    label: 'Поступление на проверке',
+    balance: '1 240.00',
+    cards: [PRIMARY, CHILD],
+    operations: SPEND_OPERATIONS,
+    incoming: [INCOMING_CHECKING],
   },
 
   /** Б-1. Нет карт, баланс нулевой — первый экран после привязки. */
@@ -511,13 +632,157 @@ export function getScenario(id: string): Scenario {
 
 /* --- Прочие демо-значения --------------------------------------------------- */
 
+/* --- Уведомления --------------------------------------------------------------
+   Лента уведомлений — то же самое, что приходит в бот. Хранится кодами и
+   параметрами, а не готовым текстом: человек меняет язык, и вся лента
+   обязана перечитаться на новом (CLAUDE.md, правило 3e).
+
+   Исключение одно и оно видно ниже: причина отклонения заявки написана
+   оператором от руки и хранится его текстом (docs/i18n.md).
+
+   Порядок — от старых к новым, как в переписке. */
+
+export const NOTIFICATIONS: AppNotification[] = [
+  {
+    id: 'n-1',
+    code: 'card.issued',
+    params: { last4: '4417' },
+    kind: 'card',
+    at: '2026-10-03T19:40:00Z',
+  },
+  {
+    id: 'n-2',
+    code: 'deposit.credited',
+    params: { amount: '490.00', currency: 'USD' },
+    kind: 'money',
+    at: '2026-10-04T09:12:00Z',
+  },
+  {
+    id: 'n-3',
+    code: 'challenge.code',
+    params: { merchant: 'AMAZON MKTPL*2H4KL', amount: '49.99', currency: 'USD' },
+    challengeCode: '4821',
+    kind: 'challenge',
+    at: '2026-10-04T20:10:00Z',
+  },
+  {
+    id: 'n-4',
+    code: 'spend.completed',
+    params: { merchant: 'AMAZON MKTPL*2H4KL', amount: '49.99', currency: 'USD', last4: '4417' },
+    kind: 'money',
+    at: '2026-10-04T20:12:00Z',
+  },
+  {
+    id: 'n-5',
+    code: 'spend.declined',
+    params: { merchant: 'UBER *TRIP HELP.UBER.C', amount: '23.40', currency: 'USD', last4: '8820' },
+    reasonCode: 'insufficient_funds',
+    kind: 'money',
+    at: '2026-10-05T08:30:00Z',
+  },
+  {
+    id: 'n-6',
+    code: 'spend.completed',
+    params: { merchant: 'SQ *COFFEE SHOP 4411', amount: '12.40', currency: 'USD', last4: '4417' },
+    kind: 'money',
+    at: '2026-10-05T10:45:00Z',
+  },
+  {
+    id: 'n-7',
+    code: 'deposit.rejected',
+    // Причина — свободный текст оператора, хранится как написан.
+    params: { reason: 'Платёж не найден по указанной ссылке.' },
+    kind: 'money',
+    at: '2026-10-05T12:20:00Z',
+  },
+  {
+    id: 'n-8',
+    code: 'transfer.completed',
+    params: { amount: '200.00', currency: 'USD', from: '4417', to: '8820' },
+    kind: 'money',
+    at: '2026-10-05T13:41:00Z',
+  },
+  {
+    id: 'n-9',
+    code: 'card.frozen',
+    params: { last4: '8820' },
+    kind: 'card',
+    at: '2026-10-05T18:05:00Z',
+    unread: true,
+  },
+  /* Проверка не пройдена. Уведомление обязано быть: деньги на адрес
+     пришли, но в систему не попали, и человек их не видит нигде. Молчание
+     здесь читается как «деньги пропали». */
+  {
+    id: 'n-11',
+    code: 'aml.failed',
+    params: { amount: '1 200.00', currency: 'USDT' },
+    actionCode: 'refund',
+    kind: 'security',
+    at: '2026-10-05T19:30:00Z',
+    unread: true,
+  },
+  {
+    id: 'n-10',
+    code: 'challenge.code',
+    params: { merchant: 'BOOKING.COM AMSTERDAM', amount: '180.00', currency: 'USD' },
+    challengeCode: '3907',
+    kind: 'challenge',
+    at: '2026-10-06T09:15:00Z',
+    unread: true,
+  },
+]
+
 export const DEMO = {
   /** Невалидный по контрольной сумме номер — настоящих в прототипе нет. */
   pan: '5355 0100 2233 4417',
   cvv: '417',
   cardPin: '4417',
   recoveryCode: 'RLM-7KQD-82XF-M4VT-9WAH',
+  /** Вход по почте — для тех, у кого Telegram нет или кто открыл сайт
+   *  с компьютера. Пароль в прототипе не проверяется: настоящего входа
+   *  здесь нет (docs/prototype.md). */
+  account: {
+    email: 'd.sokolov@alpha-holding.ru',
+    /** Подтверждена ли почта. На неё уходит восстановление доступа,
+     *  поэтому состояние видно в настройках, а не прячется. */
+    emailVerified: true,
+    /** Бот, в который уводит вход через Telegram. Из браузера мы умеем
+     *  только это: проверить наличие Telegram сайт не может. */
+    bot: { name: '@reloom_bot', link: 'https://t.me/reloom_bot' },
+  },
+  /**
+   * Возврат по непрошедшему проверку поступлению.
+   *
+   * Деньги лежат на крипто-адресе и в систему не зачислены — вернуть их
+   * можно только туда, откуда пришли. Команду на возврат отдаёт сервис,
+   * к которому подключён кошелёк; он же удерживает комиссию сети.
+   *
+   * Числа записаны готовыми: вычитание комиссии происходит на стороне
+   * сервиса, и считать его у себя значило бы завести вторую, свою
+   * арифметику над чужими деньгами (docs/prototype.md).
+   */
+  refund: {
+    amount: '1 200.00',
+    networkFee: '1.40',
+    returned: '1 198.60',
+    asset: 'USDT',
+    network: 'Ethereum (ERC-20)',
+    /** Адрес, с которого пришли деньги. Другого ввести нельзя. */
+    from: '0x9D4eB2a7F31cA685b0E73d5C9f216aB84cD0E372',
+    /** Адрес пополнения — после возврата он уничтожается. */
+    address: '0x7F4c9A2bE81dC3650aF19b7D4e2C8a05B36fE914',
+    risk: '91',
+  },
+  /** Второй фактор для входа по почте. Секрет выдуман, в QR он и уходит. */
+  twoFactor: {
+    secret: 'JBSW Y3DP EHPK 3PXP',
+    otpauth: 'otpauth://totp/Reloom:d.sokolov@alpha-holding.ru?secret=JBSWY3DPEHPK3PXP&issuer=Reloom',
+    code: '318204',
+  },
   depositFee: { gross: '500.00', fee: '10.00', net: '490.00' },
+  /** Ставка комиссии пополнения — показывается текстом, не считается. */
+  depositRate: { percent: '1.5', fixed: '2.00' },
   minDeposit: '100.00',
   reviewHours: '6',
   secretsTimeout: 30,

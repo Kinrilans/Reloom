@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowDownLeft, ArrowUpRight, Inbox } from 'lucide-react'
 import {
   Badge,
@@ -71,13 +71,26 @@ export default function ExchangePage() {
   const { locale, t } = useI18n()
   const { byCompany, isAllCompanies } = useAdmin()
 
+  /* Сервисов стало три, и разбирают их по отдельности: у выпуска карты
+     и у проверки AML разные поводы заглянуть в журнал. */
+  /* Сюда приходят из «Состояния системы» со ссылкой вида
+     ?request=req_… — чтобы разбор начинался с нужной строки, а не
+     с поиска её руками. Параметр читается после монтирования: на
+     сервере его ещё нет, и разметка разъехалась бы с клиентской. */
+  const [service, setService] = useState('all')
   const [direction, setDirection] = useState('all')
   const [outcome, setOutcome] = useState('all')
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(0)
   const [openId, setOpenId] = useState<string | null>(null)
 
+  useEffect(() => {
+    const request = new URLSearchParams(window.location.search).get('request')
+    if (request) setQuery(request)
+  }, [])
+
   const filtered = byCompany(EXCHANGE_LOG)
+    .filter((e) => (service === 'all' ? true : e.service === service))
     .filter((e) => (direction === 'all' ? true : e.direction === direction))
     .filter((e) => (outcome === 'all' ? true : e.outcome === outcome))
     .filter((e) => {
@@ -93,6 +106,12 @@ export default function ExchangePage() {
   const rows = pageSlice(filtered, page, PAGE_SIZE)
   const open = EXCHANGE_LOG.find((e) => e.id === openId)
 
+  const serviceOptions: SelectOption[] = [
+    { value: 'all', label: t('admin.exchange.allServices') },
+    { value: 'oxen', label: t('admin.service.oxen') },
+    { value: 'addresses', label: t('admin.service.addresses') },
+    { value: 'aml', label: t('admin.service.aml') },
+  ]
   const directionOptions: SelectOption[] = DIRECTION_KEYS.map((o) => ({ value: o.value, label: t(o.key) }))
   const outcomeOptions: SelectOption[] = OUTCOME_KEYS.map((o) => ({ value: o.value, label: t(o.key) }))
 
@@ -115,6 +134,17 @@ export default function ExchangePage() {
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)
+              setPage(0)
+            }}
+          />
+        </div>
+        <div className={styles.filter}>
+          <Select
+            label={t('admin.exchange.service')}
+            options={serviceOptions}
+            value={service}
+            onChange={(v) => {
+              setService(v)
               setPage(0)
             }}
           />
@@ -155,6 +185,7 @@ export default function ExchangePage() {
             <THead>
               <TR>
                 <TH>{t('admin.tx.col.time')}</TH>
+                <TH>{t('admin.exchange.service')}</TH>
                 <TH>{t('admin.exchange.direction')}</TH>
                 <TH>{t('admin.exchange.col.what')}</TH>
                 {isAllCompanies ? <TH>{t('admin.col.company')}</TH> : null}
@@ -172,6 +203,7 @@ export default function ExchangePage() {
                   onClick={() => setOpenId(entry.id)}
                 >
                   <TD muted>{formatDateTime(locale, entry.at)}</TD>
+                  <TD muted>{t(`admin.service.${entry.service}`)}</TD>
                   <TD muted>
                     <span className={styles.cellFlow}>
                       {entry.direction === 'out' ? (

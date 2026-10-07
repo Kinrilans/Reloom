@@ -1,6 +1,7 @@
 'use client'
 
-import { CircleCheck, RefreshCw, TriangleAlert } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowUpRight, CircleCheck, RefreshCw, TriangleAlert } from 'lucide-react'
 import { Amount, Badge, Button, Card, CardHeader, TBody, TD, TH, THead, TR, Table, Toast } from '@/ui'
 import { formatDateTime, useI18n } from '@/i18n'
 import { SYSTEM } from '@/fixtures/admin'
@@ -74,19 +75,36 @@ export default function SystemPage() {
                   <TH align="numeric">{t('admin.tx.col.amount')}</TH>
                   <TH>{t('admin.system.col.state')}</TH>
                   <TH>{t('admin.system.col.started')}</TH>
+                  <TH align="actions">{t('admin.col.action')}</TH>
                 </TR>
               </THead>
               <TBody>
-                {SYSTEM.pendingTransfers.map((t) => (
-                  <TR key={t.id} flagged>
-                    <TD primary>{t.userName}</TD>
+                {SYSTEM.pendingTransfers.map((row) => (
+                  <TR key={row.id} flagged>
+                    <TD primary>{row.userName}</TD>
                     <TD align="numeric">
-                      <Amount value={t.amount} currency="USD" size="caption" />
+                      <Amount value={row.amount} currency="USD" size="caption" />
                     </TD>
                     <TD muted>
-                      <span className={styles.mono}>{t.state}</span>
+                      <span className={styles.mono}>{row.state}</span>
                     </TD>
-                    <TD muted>{formatDateTime(locale, t.at)}</TD>
+                    <TD muted>{formatDateTime(locale, row.at)}</TD>
+                    {/* Переход к самому пользователю: список проблем без
+                        перехода к проблеме заставляет искать её руками. */}
+                    <TD align="actions">
+                      <div className={styles.actionsCell}>
+                        <Link href={`/admin/users/${row.userId}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            iconOnly
+                            aria-label={t('admin.system.goToUser')}
+                            title={t('admin.system.goToUser')}
+                            iconStart={<ArrowUpRight size={16} />}
+                          />
+                        </Link>
+                      </div>
+                    </TD>
                   </TR>
                 ))}
               </TBody>
@@ -105,6 +123,7 @@ export default function SystemPage() {
                   <TH>{t('admin.col.action')}</TH>
                   <TH>requestId</TH>
                   <TH>{t('admin.system.col.when')}</TH>
+                  <TH align="actions">{t('admin.col.action')}</TH>
                 </TR>
               </THead>
               <TBody>
@@ -117,6 +136,22 @@ export default function SystemPage() {
                       <span className={styles.mono}>{c.requestId}</span>
                     </TD>
                     <TD muted>{formatDateTime(locale, c.at)}</TD>
+                    {/* Разбор зависшего вызова начинается с журнала обмена:
+                        там лежит, что мы отправили и что получили. */}
+                    <TD align="actions">
+                      <div className={styles.actionsCell}>
+                        <Link href={`/admin/exchange?request=${c.requestId}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            iconOnly
+                            aria-label={t('admin.system.goToExchange')}
+                            title={t('admin.system.goToExchange')}
+                            iconStart={<ArrowUpRight size={16} />}
+                          />
+                        </Link>
+                      </div>
+                    </TD>
                   </TR>
                 ))}
               </TBody>
@@ -132,6 +167,7 @@ export default function SystemPage() {
                   <TH>{t('admin.system.col.code')}</TH>
                   <TH>requestId</TH>
                   <TH>{t('admin.system.col.when')}</TH>
+                  <TH align="actions">{t('admin.col.action')}</TH>
                 </TR>
               </THead>
               <TBody>
@@ -144,6 +180,20 @@ export default function SystemPage() {
                       <span className={styles.mono}>{e.requestId}</span>
                     </TD>
                     <TD muted>{formatDateTime(locale, e.at)}</TD>
+                    <TD align="actions">
+                      <div className={styles.actionsCell}>
+                        <Link href={`/admin/exchange?request=${e.requestId}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            iconOnly
+                            aria-label={t('admin.system.goToExchange')}
+                            title={t('admin.system.goToExchange')}
+                            iconStart={<ArrowUpRight size={16} />}
+                          />
+                        </Link>
+                      </div>
+                    </TD>
                   </TR>
                 ))}
               </TBody>
@@ -151,6 +201,44 @@ export default function SystemPage() {
             <p className={styles.kpiHint}>{t('admin.system.errorsHint')}</p>
           </Card>
         </div>
+
+        {/* Внешние сервисы. Автозачисление держится на двух из них, и
+            когда один молчит, деньги просто перестают зачисляться —
+            оператор должен узнать об этом здесь, а не из обращений.
+
+            Ключей доступа на экране нет и не будет: они живут в переменных
+            окружения (CLAUDE.md, правило 7). Оператору нужно знать, что
+            сервис отвечает, а не чем мы к нему подключаемся. */}
+        <Card density="dense">
+          <CardHeader
+            title={t('admin.system.servicesTitle')}
+            subtitle={t('admin.system.servicesSubtitle')}
+          />
+          <div className={styles.stackTight}>
+            {SYSTEM.services.map((s) => (
+              <div className={styles.statusBlock} key={s.id}>
+                {s.ok ? (
+                  <Badge tone="success" icon={<CircleCheck size={12} />} dot={false}>
+                    {t('admin.system.serviceOk')}
+                  </Badge>
+                ) : (
+                  <Badge tone="danger" icon={<TriangleAlert size={12} />} dot={false}>
+                    {t('admin.system.serviceDown')}
+                  </Badge>
+                )}
+                <span className={styles.statusTitle}>{t(`admin.service.${s.code}`)}</span>
+                {/* Узел — данные, он не переводится. */}
+                <p className={styles.company}>
+                  {s.host} · {t('admin.system.lastCall', { at: formatDateTime(locale, s.lastAt) })}
+                </p>
+                {s.noteCode ? (
+                  <p className={styles.company}>{t(`admin.service.note.${s.noteCode}`)}</p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          <p className={styles.kpiHint}>{t('admin.system.keysHint')}</p>
+        </Card>
 
         <Card density="dense">
           <CardHeader title={t('admin.system.reconTitle')} />

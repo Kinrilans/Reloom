@@ -78,13 +78,79 @@ export interface Card {
   transferPending?: boolean
 }
 
+export interface Asset {
+  /** Тикер: USDT, USDC. Он же идентификатор — тикер у монеты один. */
+  id: string
+  /** Полное название: «Tether». Стоит рядом с тикером, как в кошельках:
+   *  по тикеру монету узнают, по названию — проверяют, что не перепутали. */
+  name: string
+  /** Значок. Загружает оператор в админке; пока файла нет — заглушка. */
+  iconUrl: string | null
+}
+
 export interface Network {
   id: string
   name: string
   asset: string
+  /** Значок монеты. Загружает оператор в админке; пока файла нет —
+   *  на его месте нейтральная заглушка того же размера. */
+  iconUrl: string | null
   address: string
   memo?: string
   memoLabel?: string
+}
+
+/** Чем уведомление является для человека: от этого зависит значок и то,
+ *  можно ли его отключить (docs/flows-user.md). */
+export type NotificationKind = 'challenge' | 'security' | 'money' | 'card'
+
+export interface AppNotification {
+  id: string
+  /** Код события, не готовый текст: при смене языка лента перечитывается
+   *  на новом языке (CLAUDE.md, правило 3e). */
+  code: string
+  /** Подстановки в шаблон. Имя мерчанта среди них — и оно не переводится. */
+  params?: Record<string, string>
+  kind: NotificationKind
+  /** Код причины отказа: в текст превращается своим словарём. */
+  reasonCode?: string
+  /** 3DS-код. Показывается отдельной строкой, крупно: его переписывают
+   *  в чужое окно оплаты, и искать его в абзаце некогда. */
+  challengeCode?: string
+  /** Код действия, которое предлагает уведомление. Не ссылка и не текст:
+   *  куда ведёт `refund`, решает экран, а не запись в ленте. */
+  actionCode?: 'refund'
+  at: string
+  unread?: boolean
+}
+
+/**
+ * Поступление, которое система видит прямо сейчас.
+ *
+ * `confirming` — транзакция в сети, ждём подтверждений.
+ * `checking` — подтверждений хватает, идёт проверка происхождения.
+ * `credited` — зачислено. `rejected` — проверка не пройдена, деньги
+ * не зачислены и ждут возврата отправителю.
+ */
+export type IncomingStatus = 'confirming' | 'checking' | 'credited' | 'rejected'
+
+export interface IncomingDeposit {
+  id: string
+  status: IncomingStatus
+  amount: Money
+  asset: string
+  network: string
+  /** Подтверждений сети: сколько есть и сколько нужно. Строки, не числа:
+   *  считать здесь нечего, оба значения приходят готовыми. */
+  confirmations: string
+  confirmationsNeeded: string
+  /** Адрес отправителя — он же единственный адрес возврата. */
+  from: string
+  txLink: string
+  startedAt: string
+  /** Удержание и сумма к зачислению. Посчитаны заранее. */
+  fee: Money
+  net: Money
 }
 
 export interface DepositRequest {
@@ -120,6 +186,9 @@ export interface Scenario {
   cards: Card[]
   operations: Operation[]
   deposit?: DepositRequest
+  /** Поступления, которые система видит прямо сейчас. Пока список не
+   *  пуст, на главной висит кнопка «Активные транзакции». */
+  incoming?: IncomingDeposit[]
   /** Эмитент недоступен: показываем последние известные данные с отметкой. */
   offlineSince?: string
 }
