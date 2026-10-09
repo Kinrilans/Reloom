@@ -26,12 +26,21 @@ export function CardFace({
   const statusIcon =
     card.status === 'FROZEN' ? <Snowflake size={16} /> : card.status === 'CLOSING' ? <Clock size={16} /> : null
 
+  /* Свечения под картой нет, и вернуть его нельзя.
+
+     На главной карты лежат в ленте с горизонтальной прокруткой, а
+     прокрутка обрезает всё, что выходит за её рамки. Свечение
+     обрезалось по верхнему и нижнему краю ленты и давало поперёк экрана
+     две резкие линии — ровно там, где должно было мягко сходить на нет.
+
+     Подъём карте даёт её собственная светлая кромка, а на главной — ещё
+     и свечение под всем верхним блоком (home.module.css). Отдельное
+     свечение у каждой карты к ним ничего не добавляло. */
   return (
     <Surface
-      tone={canceled ? 'nested' : 'brand'}
+      tone={canceled ? 'nested' : 'glass'}
       density="flush"
       grain={!canceled}
-      glow={!canceled && !inactive}
       className={[
         styles.face,
         canceled ? styles.canceled : null,

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
@@ -26,8 +26,8 @@ import {
 import { Button, Input, Logo, Modal, Select, ThemeToggle } from '@/ui'
 import type { SelectOption } from '@/ui'
 import { useI18n } from '@/i18n'
-import { COMPANIES, DEPOSITS } from '@/fixtures/admin'
-import { ALL_COMPANIES, useAdmin } from '@/fixtures/adminStore'
+import { ALL_COMPANIES, useAdmin } from './_store/AdminStore'
+import { signOutAction } from './actions'
 import { ProfileModal } from './_components/ProfileModal'
 import styles from './AdminShell.module.css'
 
@@ -54,9 +54,8 @@ export interface AdminShellProps {
 
 export function AdminShell({ title, note, parent, action, children }: AdminShellProps) {
   const pathname = usePathname()
-  const router = useRouter()
   const { t } = useI18n()
-  const { companyId, setCompanyId, operator } = useAdmin()
+  const { companyId, setCompanyId, companies, operator, queueSize } = useAdmin()
 
   // На узком экране меню выезжает поверх содержимого: админка десктопная,
   // и одиннадцать пунктов сверху увели бы работу за пределы экрана.
@@ -76,7 +75,15 @@ export function AdminShell({ title, note, parent, action, children }: AdminShell
       items: [
         { href: '/admin', label: t('admin.nav.dashboard'), icon: LayoutDashboard },
         // Основная ежедневная работа — счётчик показывает очередь.
-        { href: '/admin/deposits', label: t('admin.nav.deposits'), icon: ArrowDownToLine, count: DEPOSITS.length },
+        {
+          href: '/admin/deposits',
+          label: t('admin.nav.deposits'),
+          icon: ArrowDownToLine,
+          // Счётчик показывает очередь, а не всю историю: в истории
+          // число ничего не значит и только мешает заметить рост
+          // очереди.
+          count: queueSize,
+        },
         /* Адреса стоят рядом с пополнениями, а не в настройках: это не
            настройка, а рабочие данные — оператор открывает их, когда
            разбирает поступление. */
@@ -107,7 +114,7 @@ export function AdminShell({ title, note, parent, action, children }: AdminShell
 
   const companyOptions: SelectOption[] = [
     { value: ALL_COMPANIES, label: t('admin.shell.allCompanies') },
-    ...COMPANIES.map((c) => ({ value: c.id, label: c.name })),
+    ...companies.map((c) => ({ value: c.id, label: c.name })),
   ]
 
   const initials = operator.name
@@ -128,9 +135,7 @@ export function AdminShell({ title, note, parent, action, children }: AdminShell
           .filter(Boolean)
           .join(' ')}
       >
-        {/* На логотипе висит тихий вызов панели показа: три быстрых
-            нажатия (src/demo/useDemoPanel.ts). */}
-        <Link className={styles.brand} href="/admin" data-demo-trigger>
+        <Link className={styles.brand} href="/admin">
           <Logo variant="lockup" tone="current" height={20} title="Reloom" />
         </Link>
 
@@ -250,7 +255,10 @@ export function AdminShell({ title, note, parent, action, children }: AdminShell
             <Button
               onClick={() => {
                 setLeaving(false)
-                router.push('/admin/login')
+                // Сессия отзывается на сервере: уход со страницы её
+                // не закрывает, а открытая вкладка продолжала бы
+                // работать.
+                void signOutAction()
               }}
             >
               {t('admin.shell.signOut')}

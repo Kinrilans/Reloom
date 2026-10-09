@@ -1,12 +1,18 @@
 'use client'
 
-import { useState } from 'react'
-import { KeyRound, ShieldCheck, ShieldOff } from 'lucide-react'
-import { Badge, Button, Card, CardHeader, Input, Modal, QrPlaceholder, Select, Toast } from '@/ui'
+import { useState, useTransition } from 'react'
+import { KeyRound, ShieldCheck } from 'lucide-react'
+import { Badge, Button, Card, CardHeader, Input, Modal, Qr, Select, Toast } from '@/ui'
 import type { SelectOption } from '@/ui'
 import { LOCALES, LOCALE_NAMES, useI18n } from '@/i18n'
 import type { Locale } from '@/i18n'
-import { useAdmin } from '@/fixtures/adminStore'
+import { useAdmin } from '../_store/AdminStore'
+import {
+  changePasswordAction,
+  confirmTotpAction,
+  reconnectTotpAction,
+  setLocaleAction,
+} from './profileActions'
 import styles from '../admin.module.css'
 
 /**
@@ -16,17 +22,18 @@ import styles from '../admin.module.css'
  * относится к самому оператору, а не к данным: язык интерфейса, второй
  * фактор, свой пароль.
  *
- * Язык переехал сюда из шапки: он настраивается один раз, а место в
- * шапке занимал постоянно, рядом с компанией — настройкой, которую
- * переключают по десять раз на дню.
+ * Язык переехал сюда из шапки: он настраивается один раз, а место
+ * в шапке занимал постоянно — рядом с компанией, которую переключают
+ * по десять раз на дню.
  *
- * Секрет для второго фактора и пароли в прототипе ненастоящие и никуда
- * не отправляются.
+ * Второй фактор здесь всегда подключён: сессия без подтверждённого
+ * кода не создаётся вовсе. Поэтому действие тут одно — перепривязать
+ * к новому приложению, и старый код при этом перестаёт работать сразу.
+ *
+ * Секрет показывается строкой, а не QR-кодом: настоящий генератор —
+ * это зависимость, а нарисованная заглушка не сканируется, и оператор
+ * потратил бы на неё время. Строку аутентификатор принимает вводом.
  */
-
-/** Выдуманный секрет для показа. Настоящий выдаёт сервер при подключении
- *  и показывается ровно один раз. */
-const DEMO_SECRET = 'JBSWY3DPEHPK3PXP'
 
 export interface ProfileModalProps {
   open: boolean
@@ -35,17 +42,22 @@ export interface ProfileModalProps {
 
 export function ProfileModal({ open, onClose }: ProfileModalProps) {
   const { locale, setLocale, t } = useI18n()
-  const { operator, twoFactor, setTwoFactor } = useAdmin()
+  const { operator } = useAdmin()
+  const [pending, startTransition] = useTransition()
 
-  const [connecting, setConnecting] = useState(false)
+  const [setup, setSetup] = useState<{ secret: string; uri: string } | null>(null)
   const [code, setCode] = useState('')
   const [notice, setNotice] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
   const [repeat, setRepeat] = useState('')
 
-  const localeOptions: SelectOption[] = LOCALES.map((l) => ({ value: l, label: LOCALE_NAMES[l] }))
+  const localeOptions: SelectOption[] = LOCALES.map((item) => ({
+    value: item,
+    label: LOCALE_NAMES[item],
+  }))
 
   const initials = operator.name
     .split(' ')
@@ -58,9 +70,10 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
 
   function close() {
     onClose()
-    setConnecting(false)
+    setSetup(null)
     setCode('')
     setNotice(null)
+    setError(null)
     setCurrent('')
     setNext('')
     setRepeat('')
@@ -75,6 +88,7 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
     >
       <div className={styles.stack}>
         {notice ? <Toast tone="success" title={notice} onClose={() => setNotice(null)} /> : null}
+        {error ? <Toast tone="danger" title={error} /> : null}
 
         <div className={styles.profileHead}>
           <span className={styles.profileAvatar}>{initials}</span>
@@ -91,7 +105,14 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
           label={t('admin.profile.language')}
           options={localeOptions}
           value={locale}
-          onChange={(value) => setLocale(value as Locale)}
+          onChange={(value) => {
+            setLocale(value as Locale)
+            startTransition(async () => {
+              // Язык запоминается у оператора, а не только в этой
+              // вкладке: иначе на другом компьютере он снова чужой.
+              await setLocaleAction(value)
+            })
+          }}
           hint={t('admin.profile.languageHint')}
         />
 
@@ -100,25 +121,24 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
           <CardHeader
             title={t('admin.profile.twoFactor')}
             action={
-              twoFactor ? (
-                <Badge tone="success" icon={<ShieldCheck size={12} />} dot={false}>
-                  {t('admin.profile.connected')}
-                </Badge>
-              ) : (
-                <Badge tone="warning" icon={<ShieldOff size={12} />} dot={false}>
-                  {t('admin.profile.notConnected')}
-                </Badge>
-              )
+              <Badge tone="success" icon={<ShieldCheck size={12} />} dot={false}>
+                {t('admin.profile.connected')}
+              </Badge>
             }
           />
 
-          {connecting ? (
+          {setup ? (
             <div className={styles.stack}>
-              <div className={styles.qrPreview}>
-                <QrPlaceholder value={DEMO_SECRET} size={120} />
-                <p className={styles.mono}>{DEMO_SECRET}</p>
-                <p className={styles.kpiHint}>{t('admin.profile.scanHint')}</p>
+              <Toast
+                tone="warning"
+                title={t('admin.profile.reconnectWarnTitle')}
+                text={t('admin.profile.reconnectWarnText')}
+              />
+              <div className={styles.qr}>
+                <Qr value={setup.uri} alt={t('admin.profile.qrAlt')} size={168} />
               </div>
+              <p className={styles.mono}>{setup.secret}</p>
+              <p className={styles.kpiHint}>{t('admin.profile.scanHint')}</p>
               <Input
                 label={t('admin.profile.code')}
                 inputMode="numeric"
@@ -131,43 +151,54 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
               <div className={styles.inlineActions}>
                 <Button
                   size="sm"
-                  disabled={code.length === 0}
+                  disabled={code.length === 0 || pending}
                   onClick={() => {
-                    setTwoFactor(true)
-                    setConnecting(false)
-                    setCode('')
-                    setNotice(t('admin.profile.enabledNotice'))
+                    setError(null)
+                    startTransition(async () => {
+                      const result = await confirmTotpAction(code)
+                      if (!result.ok) {
+                        setError(t('admin.profile.badCode'))
+                        return
+                      }
+                      setSetup(null)
+                      setCode('')
+                      setNotice(t('admin.profile.enabledNotice'))
+                    })
                   }}
                 >
                   {t('admin.profile.confirm')}
                 </Button>
-                <Button variant="secondary" size="sm" onClick={() => setConnecting(false)}>
+                <Button variant="secondary" size="sm" onClick={() => setSetup(null)}>
                   {t('admin.profile.cancel')}
                 </Button>
               </div>
             </div>
-          ) : twoFactor ? (
-            <p className={styles.muted}>{t('admin.profile.enabledText')}</p>
           ) : (
-            <Toast
-              tone="warning"
-              title={t('admin.profile.warnTitle')}
-              text={t('admin.profile.warnText')}
-            />
+            <>
+              <p className={styles.muted}>{t('admin.profile.enabledText')}</p>
+              <div className={styles.kpiRows}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={pending}
+                  iconStart={<KeyRound size={16} />}
+                  onClick={() => {
+                    setError(null)
+                    startTransition(async () => {
+                      const result = await reconnectTotpAction()
+                      if (!result.ok) {
+                        setError(result.error)
+                        return
+                      }
+                      setSetup({ secret: result.secret, uri: result.uri })
+                    })
+                  }}
+                >
+                  {t('admin.profile.connectAgain')}
+                </Button>
+              </div>
+            </>
           )}
-
-          {!connecting ? (
-            <div className={styles.kpiRows}>
-              <Button
-                variant="secondary"
-                size="sm"
-                iconStart={<KeyRound size={16} />}
-                onClick={() => setConnecting(true)}
-              >
-                {twoFactor ? t('admin.profile.connectAgain') : t('admin.profile.connect')}
-              </Button>
-            </div>
-          ) : null}
         </Card>
 
         {/* --- Пароль ------------------------------------------------------ */}
@@ -187,6 +218,7 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
               autoComplete="new-password"
               value={next}
               onChange={(e) => setNext(e.target.value)}
+              hint={t('admin.profile.newHint')}
             />
             <Input
               label={t('admin.profile.repeat')}
@@ -199,12 +231,23 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
             <Button
               variant="secondary"
               size="sm"
-              disabled={!mayChangeSecret}
+              disabled={!mayChangeSecret || pending}
               onClick={() => {
-                setCurrent('')
-                setNext('')
-                setRepeat('')
-                setNotice(t('admin.profile.changed'))
+                setError(null)
+                startTransition(async () => {
+                  const result = await changePasswordAction({
+                    currentPassword: current,
+                    nextPassword: next,
+                  })
+                  if (!result.ok) {
+                    setError(result.error)
+                    return
+                  }
+                  setCurrent('')
+                  setNext('')
+                  setRepeat('')
+                  setNotice(t('admin.profile.changed'))
+                })
               }}
             >
               {t('admin.profile.change')}

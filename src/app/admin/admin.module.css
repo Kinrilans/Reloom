@@ -475,3 +475,14 @@
   max-height: var(--width-aside);
   overflow-y: auto;
 }
+
+/* Рамка вокруг QR. Белое поле внутри кода трогать нельзя — по нему
+   сканер находит границу, — поэтому рамка идёт снаружи. */
+.qr {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-12);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}

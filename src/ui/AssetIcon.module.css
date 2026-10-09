@@ -13,7 +13,7 @@
   color: var(--text-muted);
   font-size: var(--fs-micro);
   font-weight: var(--fw-semibold);
-  letter-spacing: -0.02em;
+  letter-spacing: var(--tracking-snug);
   object-fit: cover;
   overflow: hidden;
 }

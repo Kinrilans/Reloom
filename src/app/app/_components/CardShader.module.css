@@ -1,9 +1,18 @@
-/* Слой переливания. Лежит между фирменным градиентом карты и её
-   содержимым, границы карты не выходит.
+/* Лицо карты: живой фирменный градиент с бренд-борда.
 
-   Цвета — только фирменные токены: светлый и тёмный концы градиента
-   логотипа плюс мята из акцентной пары. Новых оттенков слой не вводит,
-   он их смешивает. */
+   Поверх тёмной фиолетовой основы (её даёт сама карточка, токен
+   `--grad-card`) очень медленно плывут вытянутые ленты света, провал
+   черноты и лаймовый отлив. Это узор с бренд-борда (`docs/brand.md`,
+   `design/logo/`): глубокий фиолетовый, почти чёрные провалы и редкое
+   зелёное по краю.
+
+   Ленты вытянутые и повёрнутые, а не круглые: круг даёт ровную
+   подсветку, а на бренд-борде свет идёт лентами. Каждая вдобавок
+   поворачивается и дышит прозрачностью — от одного переноса вбок
+   картинка выглядит сдвигающейся, а не текущей.
+
+   Цвета — только объявленные токены и смеси из них. Новых оттенков
+   слой не вводит. */
 
 .shader {
   position: absolute;
@@ -13,136 +22,188 @@
   pointer-events: none;
 }
 
-.blobA,
-.blobB,
-.blobC {
+.glowA,
+.glowB,
+.dark,
+.lime {
   position: absolute;
-  /* Пятно заметно шире карты: внутрь попадает только его середина,
-     и край пятна нигде не виден. */
-  width: 115%;
-  aspect-ratio: 1;
   border-radius: var(--radius-pill);
-  filter: blur(34px);
+  filter: blur(30px);
   /* Браузер готовит слой заранее: иначе первый кадр движения дёргается. */
   will-change: transform;
 }
 
-/* Светлое пятно — источник света. Берёт светлый конец фирменного
-   градиента, тот же, что в логотипе. */
-.blobA {
-  top: -35%;
-  left: -20%;
+/* Главная лента света — светлый конец фирменного градиента, тот же,
+   что в логотипе. */
+.glowA {
+  top: -30%;
+  left: -6%;
+  width: 96%;
+  height: 92%;
   background: radial-gradient(
-    circle at center,
-    var(--brand-light),
-    transparent 68%
+    closest-side at 50% 50%,
+    var(--brand-light) 26%,
+    color-mix(in srgb, var(--brand-light) 54%, transparent) 64%,
+    transparent 100%
   );
 }
 
-/* Заводь другого тона. Она тут не для красоты: без неё карта остаётся
-   ровно-сиреневой и переливаться нечему. Цвет — фон темы, новых оттенков
-   слой не вводит: на тёмной теме заводь тёмная и заодно поднимает
-   контраст белого текста, на светлой — светлая. */
-.blobB {
-  bottom: -40%;
-  left: -15%;
-  width: 130%;
+/* Вторая лента, ниже и глуше: от неё свет не кажется одним пятном. */
+.glowB {
+  bottom: -34%;
+  right: -26%;
+  width: 92%;
+  height: 78%;
   background: radial-gradient(
-    circle at center,
-    color-mix(in srgb, var(--bg) 92%, transparent),
-    transparent 72%
+    closest-side at 50% 50%,
+    color-mix(in srgb, var(--brand-light) 78%, var(--brand-dark)),
+    transparent 100%
   );
 }
 
-/* Мятный отлив — то самое «зелёное» из референса. Сидит в правом нижнем
-   углу и приглушён: по нему не идёт ни одна крупная подпись, а белый
-   текст на светлой мяте читается плохо. */
-.blobC {
-  bottom: -30%;
-  right: -30%;
-  width: 85%;
-  opacity: 0.42;
+/* Провал черноты. Без по-настоящему тёмного места градиент не читается
+   как глубокий, а карта остаётся ровно-сиреневой.
+
+   Цвет — тёмная краска палитры (`--on-accent`, #0c0c10 в обеих темах,
+   ею же набран текст на акцентной заливке). От темы он не зависит, и
+   это важно: карта залита фирменным градиентом и на светлой теме тоже,
+   а светлый «провал» убил бы контраст белых подписей. */
+.dark {
+  bottom: -32%;
+  left: -26%;
+  width: 78%;
+  height: 74%;
   background: radial-gradient(
-    circle at center,
-    color-mix(in srgb, var(--accent-dark) 90%, transparent),
-    transparent 68%
+    closest-side at 50% 50%,
+    color-mix(in srgb, var(--on-accent) 92%, transparent),
+    transparent 100%
   );
 }
 
-/* --- Рисунки движения --------------------------------------------------------
-   Отличаются направлением, длительностью и сдвигом фаз. Длительности
-   нарочно не кратны друг другу: иначе пятна через круг сходятся
-   в одно положение, и карта начинает «мигать» по расписанию. */
+/* Лаймовый отлив — то самое зелёное с бренд-борда. Узкая лента по краю
+   и приглушённая: на светлом лайме белая подпись не читается, а норма
+   контраста важнее красоты. Поэтому она и держится правого верхнего
+   угла, где подписей нет. */
+.lime {
+  top: -22%;
+  right: -14%;
+  width: 52%;
+  height: 62%;
+  opacity: 0.4;
+  background: radial-gradient(
+    closest-side at 50% 50%,
+    var(--accent-light),
+    transparent 100%
+  );
+}
+
+/* --- Движение ----------------------------------------------------------------
+   Полторы-две минуты на цикл и ни одного одинакового числа: кратные
+   длительности через круг сводят ленты в одно положение, и карта
+   начинает «мигать» по расписанию.
+
+   Двигаются только `transform` и `opacity`. Анимация размеров или
+   положения пересчитывает раскладку и дёргается на слабом телефоне,
+   а Mini App открывают на чём угодно (docs/prototype.md). */
 
 @keyframes driftA {
   from {
-    transform: translate3d(0, 0, 0) scale(1);
+    transform: translate3d(-14%, -8%, 0) rotate(-12deg) scale(0.96);
+    opacity: 0.78;
   }
   to {
-    transform: translate3d(18%, 12%, 0) scale(1.18);
+    transform: translate3d(16%, 12%, 0) rotate(10deg) scale(1.3);
+    opacity: 1;
   }
 }
 
 @keyframes driftB {
   from {
-    transform: translate3d(0, 0, 0) scale(1.1);
+    transform: translate3d(12%, 8%, 0) rotate(14deg) scale(1.18);
+    opacity: 1;
   }
   to {
-    transform: translate3d(-16%, -14%, 0) scale(0.92);
+    transform: translate3d(-18%, -12%, 0) rotate(-10deg) scale(0.88);
+    opacity: 0.72;
   }
 }
 
-@keyframes driftC {
+@keyframes driftDark {
   from {
-    transform: translate3d(0, 0, 0) scale(0.95);
-    opacity: 0.3;
+    transform: translate3d(-10%, 10%, 0) rotate(6deg) scale(1);
   }
   to {
-    transform: translate3d(-24%, -16%, 0) scale(1.25);
-    opacity: 0.5;
+    transform: translate3d(20%, -10%, 0) rotate(-14deg) scale(1.34);
   }
 }
 
-.shader .blobA {
-  animation: driftA 34s var(--ease-in-out) infinite alternate;
+@keyframes driftLime {
+  from {
+    transform: translate3d(4%, -10%, 0) rotate(-16deg) scale(0.88);
+    opacity: 0.2;
+  }
+  to {
+    transform: translate3d(-18%, 14%, 0) rotate(12deg) scale(1.26);
+    opacity: 0.46;
+  }
 }
 
-.shader .blobB {
-  animation: driftB 27s var(--ease-in-out) infinite alternate;
+.shader .glowA {
+  animation: driftA 86s var(--ease-in-out) infinite alternate;
 }
 
-.shader .blobC {
-  animation: driftC 41s var(--ease-in-out) infinite alternate;
+.shader .glowB {
+  animation: driftB 71s var(--ease-in-out) infinite alternate;
 }
 
-/* Вариант 2: обратный ход и другие фазы. */
-.v2 .blobA {
-  animation-duration: 29s;
+.shader .dark {
+  animation: driftDark 97s var(--ease-in-out) infinite alternate;
+}
+
+.shader .lime {
+  animation: driftLime 113s var(--ease-in-out) infinite alternate;
+}
+
+/* --- Рисунки движения --------------------------------------------------------
+   Карты у одного человека не должны переливаться одинаково — это сразу
+   читается как шаблон. Отличаются направлением и сдвигом фаз. */
+
+.v2 .glowA {
+  animation-duration: 74s;
   animation-direction: alternate-reverse;
 }
 
-.v2 .blobB {
-  animation-duration: 38s;
-  animation-delay: -12s;
+.v2 .glowB {
+  animation-duration: 92s;
+  animation-delay: -30s;
 }
 
-.v2 .blobC {
-  animation-duration: 33s;
+.v2 .dark {
+  animation-duration: 81s;
   animation-direction: alternate-reverse;
 }
 
-/* Вариант 3: самый спокойный — длиннее циклы, меньше сдвиги. */
-.v3 .blobA {
-  animation-duration: 46s;
+.v2 .lime {
+  animation-duration: 104s;
+  animation-delay: -40s;
+}
+
+.v3 .glowA {
+  animation-duration: 112s;
+  animation-delay: -50s;
+}
+
+.v3 .glowB {
+  animation-duration: 95s;
+  animation-direction: alternate-reverse;
+}
+
+.v3 .dark {
+  animation-duration: 124s;
   animation-delay: -20s;
 }
 
-.v3 .blobB {
-  animation-duration: 52s;
+.v3 .lime {
+  animation-duration: 131s;
   animation-direction: alternate-reverse;
-}
-
-.v3 .blobC {
-  animation-duration: 44s;
-  animation-delay: -8s;
 }

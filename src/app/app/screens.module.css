@@ -16,7 +16,7 @@
   font-size: var(--fs-title);
   font-weight: var(--fw-bold);
   line-height: var(--lh-title);
-  letter-spacing: -0.02em;
+  letter-spacing: var(--tracking-tight);
 }
 
 .subtitle {
@@ -51,6 +51,36 @@
 .footerRow {
   flex-direction: row;
   align-items: center;
+}
+
+/* --- Отбор в списке операций -------------------------------------------------
+   Карта отдельной строкой, даты парой: на телефоне два поля даты рядом
+   ещё читаются, а третий элемент в ту же строку уже не влезает. */
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.filterPair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+/* Поле даты не сжимается само: у нативного контрола своя минимальная
+   ширина, и без этого пара полей вылезает за край полотна. */
+.filterPair > * {
+  min-width: 0;
+}
+
+/* Подвал шторки: сброс и закрытие в одну строку. */
+.sheetFooter {
+  display: flex;
+  gap: var(--space-12);
+  min-width: 0;
 }
 
 /* --- Строки «ключ — значение» ----------------------------------------------- */

@@ -39,14 +39,30 @@
      у свечения виден верхний край, и оно читается как обрезанное пятно,
      а не как подсветка под счётом и картами. */
   top: calc(var(--space-64) * -1);
-  height: 560px;
+  height: 620px;
   pointer-events: none;
-  background: radial-gradient(
-    58% 56% at 50% 42%,
-    color-mix(in srgb, var(--brand) 78%, transparent),
-    transparent 72%
-  );
-  filter: blur(48px);
+  /* Два пятна вместо одного. Плотное прижато к верхней кромке — наверху
+     цвет самый густой, как в референсе: подсветка начинается у края
+     экрана, а не всплывает из середины. Второе, светлее и холоднее,
+     стоит под картами и не даёт им лежать на ровной заливке. */
+  background:
+    radial-gradient(
+      128% 60% at 50% -8%,
+      color-mix(in srgb, var(--brand) 92%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      74% 46% at 26% 44%,
+      color-mix(in srgb, var(--brand-light) 50%, transparent),
+      transparent 74%
+    );
+  /* Растворение вниз. Без маски у свечения есть нижняя граница, и оно
+     читается как цветная плашка под картами; с маской цвет уходит в фон
+     страницы ниже карт и границы не видно вовсе. Проценты отмеряны от
+     высоты слоя: до 40% цвет в полную силу, к 96% его уже нет. */
+  -webkit-mask-image: linear-gradient(to bottom, black 0 40%, transparent 96%);
+  mask-image: linear-gradient(to bottom, black 0 40%, transparent 96%);
+  filter: blur(44px);
 }
 
 .hero {

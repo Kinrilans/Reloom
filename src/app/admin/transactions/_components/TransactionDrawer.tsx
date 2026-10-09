@@ -4,68 +4,47 @@ import Link from 'next/link'
 import { TriangleAlert } from 'lucide-react'
 import { Amount, Badge, Button, Card, CardHeader, Drawer, Toast } from '@/ui'
 import { formatDateTime, useI18n } from '@/i18n'
-import { TRANSACTIONS, companyName } from '@/fixtures/admin'
+import type { TransactionDetail } from '@/server/admin/transactions'
 import styles from '../../admin.module.css'
 
 /**
  * Карточка операции — боковой панелью из списка.
  *
- * Операции просматривают подряд, разбирая обращение: отдельная страница
- * на каждую означала бы возврат к списку и потерю фильтров.
+ * Операции просматривают подряд, разбирая обращение: отдельная
+ * страница на каждую означала бы возврат к списку и потерю фильтров.
+ *
+ * Сумма авторизации показывается рядом со списанной нарочно. Она
+ * живёт только в событии — чтение транзакции у эмитента её затирает,
+ * — и без неё не отличить курсовую разницу от чаевых.
  */
 
 export interface TransactionDrawerProps {
-  transactionId: string | null
+  transaction: TransactionDetail | null
   onClose: () => void
 }
 
-export function TransactionDrawer({ transactionId, onClose }: TransactionDrawerProps) {
+export function TransactionDrawer({ transaction, onClose }: TransactionDrawerProps) {
   const { locale, t } = useI18n()
-
-  const tx = TRANSACTIONS.find((t) => t.id === transactionId)
-
-  /* Сырой ответ эмитента — для разбора. Собран из тех же демо-данных, но
-     показан как есть: id транзакции единственный без префикса, это id
-     эмитента, а не их внутренний. */
-  const raw = tx
-    ? JSON.stringify(
-        {
-          id: tx.id,
-          status: tx.status,
-          amount: tx.amount,
-          currency: tx.currency,
-          localAmount: tx.localAmount,
-          localCurrency: tx.localCurrency,
-          merchantName: tx.merchant,
-          declineReason: tx.declineReasonCode,
-          forcePosted: tx.anomaly === 'FORCE_POSTED',
-          occurredAt: tx.at,
-          _metadata: { requestId: 'req_7KQD82XFM4VT9WAH' },
-        },
-        null,
-        2,
-      )
-    : ''
 
   return (
     <Drawer
-      open={tx !== undefined}
+      open={transaction !== null}
       onClose={onClose}
-      title={tx ? tx.merchant : t('admin.txDrawer.title')}
-      subtitle={tx ? `${tx.userName} · ${companyName(tx.companyId)}` : undefined}
+      title={transaction?.merchant ?? t('admin.txDrawer.title')}
+      subtitle={transaction ? `${transaction.userName} · ${transaction.companyName}` : undefined}
       footer={
         <Button variant="secondary" onClick={onClose}>
           {t('admin.profile.close')}
         </Button>
       }
     >
-      {tx ? (
+      {transaction ? (
         <>
-          {tx.anomaly ? (
+          {transaction.anomaly ? (
             <Toast
               tone="warning"
               title={t('admin.txDrawer.anomaly')}
-              text={t(`admin.anomalyText.${tx.anomaly}`)}
+              text={t(`admin.anomalyText.${transaction.anomaly}`)}
             />
           ) : null}
 
@@ -75,50 +54,99 @@ export function TransactionDrawer({ transactionId, onClose }: TransactionDrawerP
               <div className={styles.row}>
                 <span className={styles.rowLabel}>{t('admin.txDrawer.amount')}</span>
                 <span className={styles.rowValue}>
-                  <Amount value={tx.amount} currency={tx.currency} size="kpi" />
+                  <Amount value={transaction.amount} currency={transaction.currency} size="kpi" />
                 </span>
               </div>
-              {tx.localAmount ? (
+              {transaction.authorized ? (
+                <div className={styles.row}>
+                  <span className={styles.rowLabel}>{t('admin.txDrawer.authorized')}</span>
+                  <span className={styles.rowValue}>
+                    <Amount value={transaction.authorized} currency="USD" size="caption" />
+                  </span>
+                </div>
+              ) : null}
+              {transaction.localAmount ? (
                 <div className={styles.row}>
                   <span className={styles.rowLabel}>{t('admin.txDrawer.localAmount')}</span>
                   <span className={styles.rowValue}>
-                    {tx.localAmount} {tx.localCurrency}
+                    {transaction.localAmount} {transaction.localCurrency ?? ''}
                   </span>
                 </div>
               ) : null}
               <div className={styles.row}>
                 <span className={styles.rowLabel}>{t('admin.col.status')}</span>
                 <span className={styles.rowValue}>
-                  <Badge tone={tx.status === 'declined' ? 'danger' : 'success'}>{tx.status}</Badge>
+                  <Badge tone={transaction.display === 'declined' ? 'danger' : 'success'}>
+                    {t(`admin.tx.status.${transaction.display}`)}
+                  </Badge>
                 </span>
               </div>
               <div className={styles.row}>
                 <span className={styles.rowLabel}>{t('admin.txDrawer.time')}</span>
-                <span className={styles.rowValue}>{formatDateTime(locale, tx.at)}</span>
+                <span className={styles.rowValue}>{formatDateTime(locale, transaction.at)}</span>
               </div>
               <div className={styles.row}>
                 <span className={styles.rowLabel}>{t('admin.col.user')}</span>
                 <span className={styles.rowValue}>
-                  <Link href={`/admin/users/${tx.userId}`}>{tx.userName}</Link>
+                  <Link href={`/admin/users?open=${transaction.userId}&filter=all`}>
+                    {transaction.userName}
+                  </Link>
                 </span>
               </div>
               <div className={styles.row}>
                 <span className={styles.rowLabel}>{t('admin.col.card')}</span>
-                <span className={styles.rowValue}>•••• {tx.cardLast4}</span>
+                <span className={styles.rowValue}>
+                  <Link href={`/admin/cards?open=${transaction.cardId}`}>
+                    •••• {transaction.cardLast4 ?? '????'}
+                  </Link>
+                </span>
               </div>
-              {tx.declineReasonCode ? (
+              {transaction.declineReason ? (
                 <div className={styles.row}>
                   <span className={styles.rowLabel}>{t('admin.txDrawer.declineCode')}</span>
                   <span className={styles.rowValue}>
-                    <span className={styles.mono}>{tx.declineReasonCode}</span>
+                    <span className={styles.mono}>{transaction.declineReason}</span>
                   </span>
                 </div>
               ) : null}
             </div>
 
-            {tx.declineReasonCode === 'account_credit_limit_exceeded' ? (
+            {transaction.declineReason === 'account_credit_limit_exceeded' ? (
               <p className={styles.kpiHint}>{t('admin.txDrawer.poolHint')}</p>
             ) : null}
+          </Card>
+
+          {/* Проводка в леджере. У авторизации её нет: резерв стоит,
+              денег ещё не списано. */}
+          <Card density="dense">
+            <CardHeader
+              title={t('admin.txDrawer.ledgerTitle')}
+              subtitle={t('admin.txDrawer.ledgerSubtitle')}
+            />
+            {transaction.ledger ? (
+              <div className={styles.rows}>
+                <div className={styles.row}>
+                  <span className={styles.rowLabel}>{t('admin.txDrawer.ledgerType')}</span>
+                  <span className={styles.rowValue}>
+                    {t(`admin.ledger.${transaction.ledger.type}`)}
+                  </span>
+                </div>
+                <div className={styles.row}>
+                  <span className={styles.rowLabel}>{t('admin.txDrawer.ledgerAmount')}</span>
+                  <span className={styles.rowValue}>
+                    <Amount value={transaction.ledger.amount} currency="USD" size="caption" />
+                  </span>
+                </div>
+                <div className={styles.row}>
+                  <span className={styles.rowLabel}>{t('admin.txDrawer.time')}</span>
+                  <span className={styles.rowValue}>
+                    {formatDateTime(locale, transaction.ledger.at)}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <p className={styles.muted}>{t('admin.txDrawer.noLedger')}</p>
+            )}
           </Card>
 
           <Card density="dense">
@@ -126,7 +154,7 @@ export function TransactionDrawer({ transactionId, onClose }: TransactionDrawerP
               title={t('admin.txDrawer.rawTitle')}
               subtitle={t('admin.txDrawer.rawSubtitle')}
             />
-            <pre className={styles.raw}>{raw}</pre>
+            <pre className={styles.raw}>{JSON.stringify(transaction.raw, null, 2)}</pre>
           </Card>
 
           <Card density="dense">
@@ -136,7 +164,7 @@ export function TransactionDrawer({ transactionId, onClose }: TransactionDrawerP
               <li>{t('admin.txDrawer.lookLocal')}</li>
               <li>{t('admin.txDrawer.lookRate')}</li>
             </ul>
-            {tx.anomaly ? (
+            {transaction.anomaly ? (
               <p className={styles.kpiHint}>
                 <TriangleAlert size={12} /> {t('admin.txDrawer.anomalyNote')}
               </p>

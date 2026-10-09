@@ -2,22 +2,42 @@
 
 import type { ReactNode } from 'react'
 import { I18nProvider, PROTOTYPE_LOCALE } from '@/i18n'
-import { AdminStoreProvider } from '@/fixtures/adminStore'
-import { AdminDemoPanel } from '@/demo/AdminDemoPanel'
+import { AdminStoreProvider, type AdminCompany, type AdminOperator } from './_store/AdminStore'
 
 /**
  * Язык админки по умолчанию — русский (docs/i18n.md), в отличие от
- * клиентской части, где дефолт продукта английский. На время показа
- * прототипа русский и там, и там.
+ * клиентской части, где язык продукта английский.
+ *
+ * Оператор без сессии — это экран входа: переводы ему нужны, а
+ * хранилище админки нет, и собирать его из пустого оператора значило
+ * бы заводить фальшивого.
  */
-export function AdminProviders({ children }: { children: ReactNode }) {
+export function AdminProviders({
+  children,
+  operator,
+  companies = [],
+  companyId = 'all',
+  queueSize = 0,
+}: {
+  children: ReactNode
+  operator: AdminOperator | null
+  companies?: AdminCompany[]
+  companyId?: string
+  queueSize?: number
+}) {
+  if (!operator) {
+    return <I18nProvider initialLocale={PROTOTYPE_LOCALE}>{children}</I18nProvider>
+  }
+
   return (
-    <I18nProvider initialLocale={PROTOTYPE_LOCALE}>
-      <AdminStoreProvider>
+    <I18nProvider initialLocale={operator.locale === 'en' ? 'en' : PROTOTYPE_LOCALE}>
+      <AdminStoreProvider
+        operator={operator}
+        companies={companies}
+        companyId={companyId}
+        queueSize={queueSize}
+      >
         {children}
-        {/* Панель показа (П3). Скрытая: вызывается сочетанием клавиш,
-            на телефоне — тройным нажатием на логотип. */}
-        <AdminDemoPanel />
       </AdminStoreProvider>
     </I18nProvider>
   )

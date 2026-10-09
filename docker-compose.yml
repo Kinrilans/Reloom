@@ -1,0 +1,46 @@
+# Локальная база для разработки. Одна служба и ничего больше:
+# ни Redis, ни очередей, ни брокеров — outbox и догон событий делаются
+# на Postgres (CLAUDE.md, «Стек»).
+#
+# Поднять:   docker compose up -d
+# Проверить: docker compose ps
+# Остановить: docker compose down          (данные остаются)
+#             docker compose down -v       (данные стираются)
+
+services:
+  postgres:
+    # Версия зафиксирована. «postgres:latest» однажды приедет мажорной
+    # версией и уронит базу у того, кто просто пересобрал контейнер.
+    image: postgres:16-alpine
+    container_name: reloom-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: reloom
+      POSTGRES_PASSWORD: reloom
+      POSTGRES_DB: reloom
+      # Инициализация с нормальным сравнением строк: по умолчанию образ
+      # берёт C-локаль, и сортировка кириллицы выходит не по алфавиту.
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=und"
+    ports:
+      # Наружу — нестандартный порт, и это не придирка. 5432 почти всегда
+      # занят локально установленным Postgres; 5433 — вторым таким же.
+      # Соединение при этом не падает, а уходит в чужую базу: имя
+      # пользователя и базы совпадают, пароль не подходит, и разбираешься
+      # ты уже с ошибкой авторизации, а не с тем, что порт чужой.
+      #
+      # Если и 5434 занят — порт меняется переменной POSTGRES_PORT,
+      # и ровно на столько же правится DATABASE_URL в .env.
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Миграции не должны стартовать раньше, чем база готова принимать
+      # соединения: контейнер поднимается до того, как Postgres готов.
+      test: ["CMD-SHELL", "pg_isready -U reloom -d reloom"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  pgdata:

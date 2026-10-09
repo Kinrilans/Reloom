@@ -52,6 +52,8 @@ export type { ToastProps, ToastTone } from './Toast'
 export { Skeleton, SkeletonRow, SkeletonList, EmptyState } from './State'
 export type { SkeletonProps, EmptyStateProps } from './State'
 
+export { Qr } from './Qr'
+export type { QrProps } from './Qr'
 export { QrPlaceholder } from './QrPlaceholder'
 export type { QrPlaceholderProps } from './QrPlaceholder'
 

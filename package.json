@@ -4,20 +4,37 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:worker": "tsx watch src/worker/index.ts",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "test": "tsx scripts/db-test.ts && vitest run",
+    "test:watch": "tsx scripts/db-test.ts && vitest",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:check": "tsx scripts/db-check.ts",
+    "db:seed-admin": "tsx scripts/seed-admin.ts",
+    "db:test-prepare": "tsx scripts/db-test.ts"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
     "lucide-react": "^1.52.0",
     "next": "^16.3.8",
+    "pg": "^8.23.1",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "typescript": "^7.0.2"
+    "dotenv": "^18.0.6",
+    "prisma": "7.10.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
   }
 }

@@ -53,3 +53,14 @@
   line-height: var(--lh-body);
   color: var(--text-muted);
 }
+
+/* Белое поле кода — часть самого кода: сканер по нему находит
+   границу. Поэтому рамка и скругление идут снаружи, а не режут поле. */
+.qr {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-12);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}

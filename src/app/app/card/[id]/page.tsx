@@ -5,12 +5,11 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeftRight,
   Eye,
-  KeyRound,
   Snowflake,
   Sun,
   Trash2,
 } from 'lucide-react'
-import { Amount, Badge, Button, Card, CardHeader, List, Toast } from '@/ui'
+import { Badge, Button, Card, CardHeader, List, Toast } from '@/ui'
 import { formatDateTime, useI18n } from '@/i18n'
 import { useStore } from '@/fixtures/store'
 import { AppShell } from '../../AppShell'
@@ -42,7 +41,11 @@ export default function CardPage({ params }: { params: Promise<{ id: string }> }
 
   return (
     <AppShell title={`•••• ${current.last4}`} back>
-      <CardFace card={current} showAmount={false} />
+      {/* Доступное показано на самой карте, как на главной: это главное
+          число экрана, и ему место там, где на него смотрят. Отдельной
+          плитки с ним больше нет — одно и то же число дважды на одном
+          экране заставляет искать между ними разницу. */}
+      <CardFace card={current} />
 
       {/* Состояния карты Б-9 … Б-13. */}
       {canceled ? <Toast tone="neutral" title={t('card.canceled.text')} /> : null}
@@ -108,18 +111,6 @@ export default function CardPage({ params }: { params: Promise<{ id: string }> }
         />
       ) : null}
 
-      {/* Парные плитки — приём из референса 03-orb-wallet. */}
-      <div className={styles.tiles}>
-        <Card tone="nested" density="dense">
-          <div className={styles.tileLabel}>{t('common.available')}</div>
-          <Amount value={current.available} currency={current.currency} size="kpi" />
-        </Card>
-        <Card tone="nested" density="dense">
-          <div className={styles.tileLabel}>{t('common.spent')}</div>
-          <Amount value={current.spent} currency={current.currency} size="kpi" />
-        </Card>
-      </div>
-
       <Card>
         <div className={styles.rows}>
           <div className={styles.row}>
@@ -158,16 +149,6 @@ export default function CardPage({ params }: { params: Promise<{ id: string }> }
             >
               <ArrowLeftRight className={styles.actionIcon} size={20} />
               <span className={styles.actionLabel}>{t('action.transfer')}</span>
-            </button>
-
-            <button
-              type="button"
-              className={styles.actionRow}
-              disabled={quarantined || blocked}
-              onClick={() => router.push(`/app/card/${current.id}/pin`)}
-            >
-              <KeyRound className={styles.actionIcon} size={20} />
-              <span className={styles.actionLabel}>{t('card.pin')}</span>
             </button>
 
             {/* Заморозка — мгновенно, без подтверждения: это защитное

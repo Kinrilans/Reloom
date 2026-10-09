@@ -1,11 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import { Check, Copy } from 'lucide-react'
-import { Button, Card, CardHeader, Input, Modal, Select, Toast } from '@/ui'
+import { useState, useTransition } from 'react'
+import { Button, Input, Modal, Select, Toast } from '@/ui'
 import type { SelectOption } from '@/ui'
 import { useI18n } from '@/i18n'
-import { COMPANIES } from '@/fixtures/admin'
+import { createUserAction } from '../actions'
 import styles from '../../admin.module.css'
 
 /**
@@ -14,81 +13,57 @@ import styles from '../../admin.module.css'
  * Окном, а не отдельной страницей: оператор заводит пользователя из
  * списка и возвращается в тот же список с теми же фильтрами.
  *
- * После создания идёт вызов эмитента с идемпотентным ключом, записанным
- * в базу ДО отправки запроса: иначе при падении процесса мы не узнаем,
- * был ли картхолдер создан, и заведём второго.
+ * Три поля, и только они: компания, имя, почта. Телефон, дату
+ * рождения и адрес оператор руками не вводит — всё, что нужно для
+ * выпуска карты, эмитент соберёт сам при проверке, а набранное
+ * оператором со слов придётся потом исправлять в двух местах.
  *
- * Статус отображается честно — «на проверке», а не «готово»: он
- * подтягивается событиями, и успех показывается только после
- * подтверждённого чтения.
+ * Заведение у эмитента — **следующий** шаг, а не часть этого. Оно
+ * может не получиться или зависнуть, и объединять их значило бы
+ * получить состояние, в котором непонятно, где человек есть, а где
+ * нет. Поэтому после создания открывается его карточка, и кнопка
+ * «завести у эмитента» ждёт там.
  */
-
-const LINK_CODE = 'RLM-INV-7KQD-82XF'
 
 export interface NewUserModalProps {
   open: boolean
+  companies: { id: string; name: string }[]
   onClose: () => void
+  onCreated: (userId: string) => void
 }
 
-export function NewUserModal({ open, onClose }: NewUserModalProps) {
+export function NewUserModal({ open, companies, onClose, onCreated }: NewUserModalProps) {
   const { t } = useI18n()
-  const [created, setCreated] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [companyId, setCompanyId] = useState(companies[0]?.id ?? '')
+  const [fullName, setFullName] = useState('')
+  const [email, setEmail] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [pending, startTransition] = useTransition()
 
-  const companyOptions: SelectOption[] = COMPANIES.map((c) => ({ value: c.id, label: c.name }))
+  const companyOptions: SelectOption[] = companies.map((company) => ({
+    value: company.id,
+    label: company.name,
+  }))
 
-  // Закрытие возвращает окно к форме: следующий пользователь заводится
-  // с чистого листа, а не с чужим кодом подключения на экране.
   function close() {
     onClose()
-    setCreated(false)
-    setCopied(false)
+    setFullName('')
+    setEmail('')
+    setError(null)
   }
 
-  if (created) {
-    return (
-      <Modal
-        open={open}
-        onClose={close}
-        title={t('admin.newUser.doneTitle')}
-        size="lg"
-        footer={<Button onClick={close}>{t('admin.newUser.done')}</Button>}
-      >
-        <div className={styles.grid2}>
-          <Card density="dense">
-            <CardHeader title={t('admin.newUser.checkTitle')} />
-            <Toast
-              tone="warning"
-              title={t('admin.newUser.pendingTitle')}
-              text={t('admin.newUser.pendingText')}
-            />
-            <p className={styles.kpiHint}>{t('admin.newUser.pendingHint')}</p>
-          </Card>
-
-          <Card density="dense">
-            <CardHeader
-              title={t('admin.newUser.linkTitle')}
-              subtitle={t('admin.newUser.linkSubtitle')}
-            />
-            <p className={styles.mono}>{LINK_CODE}</p>
-            <div className={styles.kpiRows}>
-              <Button
-                variant="secondary"
-                size="sm"
-                fullWidth
-                iconStart={copied ? <Check size={16} /> : <Copy size={16} />}
-                onClick={() => {
-                  void navigator.clipboard?.writeText(LINK_CODE).catch(() => undefined)
-                  setCopied(true)
-                }}
-              >
-                {copied ? t('admin.newUser.copied') : t('admin.newUser.copy')}
-              </Button>
-            </div>
-          </Card>
-        </div>
-      </Modal>
-    )
+  function submit() {
+    setError(null)
+    startTransition(async () => {
+      const result = await createUserAction({ companyId, fullName, email })
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
+      setFullName('')
+      setEmail('')
+      onCreated(result.userId)
+    })
   }
 
   return (
@@ -102,26 +77,32 @@ export function NewUserModal({ open, onClose }: NewUserModalProps) {
           <Button variant="secondary" onClick={close}>
             {t('admin.newUser.cancel')}
           </Button>
-          <Button onClick={() => setCreated(true)}>{t('admin.newUser.submit')}</Button>
+          <Button
+            disabled={pending || companyId === '' || fullName.trim() === '' || !email.includes('@')}
+            onClick={submit}
+          >
+            {t('admin.newUser.submit')}
+          </Button>
         </>
       }
     >
       <p className={styles.muted}>{t('admin.newUser.lead')}</p>
 
-      {/* Три поля, и только они. Телефон, дату рождения и адрес оператор
-          руками не вводит: всё, что нужно для выпуска карты, эмитент
-          соберёт сам при прохождении проверки — а то, что оператор
-          наберёт по памяти, придётся потом исправлять. */}
+      {error ? <Toast tone="danger" title={error} /> : null}
+
       <div className={styles.stack}>
         <Select
           label={t('admin.newUser.company')}
           options={companyOptions}
-          defaultValue={COMPANIES[0]!.id}
+          value={companyId}
+          onChange={setCompanyId}
           required
         />
         <Input
           label={t('admin.newUser.name')}
           placeholder={t('admin.newUser.namePlaceholder')}
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
           required
         />
         <Input
@@ -129,6 +110,8 @@ export function NewUserModal({ open, onClose }: NewUserModalProps) {
           type="email"
           placeholder="user@example.com"
           hint={t('admin.newUser.emailHint')}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           required
         />
       </div>

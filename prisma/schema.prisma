@@ -1,0 +1,578 @@
+// Модель данных Reloom. Черновик — docs/domain-and-money.md,
+// «Модель данных»; здесь он доведён до рабочего состояния.
+//
+// Правила, действующие в каждой модели:
+//   * денежные суммы — только BigInt в минорных единицах. Ни Float,
+//     ни Decimal, ни Int (CLAUDE.md, правило 1);
+//   * имена в БД — snake_case, в TypeScript — camelCase: маппинг через
+//     @map/@@map, а не переименованием полей;
+//   * удаления нет. Леджер и аудит стирать нельзя, учётная запись
+//     только блокируется.
+
+generator client {
+  provider = "prisma-client"
+  // Путь обязателен начиная с 7-й версии: клиент генерируется в наш
+  // исходный код, а не внутрь node_modules. Папка под игнором git —
+  // это сборочный артефакт, его пересоздаёт `pnpm db:generate`.
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Строки подключения здесь нет: с 7-й версии Prisma она живёт
+  // в prisma.config.ts (для миграций) и в адаптере драйвера
+  // (для клиента). Схема — модель данных, одна на все окружения;
+  // адрес базы у каждого свой.
+}
+
+// ---------------------------------------------------------------------------
+// Организации и люди
+// ---------------------------------------------------------------------------
+
+model Company {
+  id           String  @id @default(cuid())
+  name         String
+  oxenClientId String  @unique @map("oxen_client_id") // cl_…
+  isActive     Boolean @default(true) @map("is_active")
+
+  // Зеркало пула из Oxen, а не источник истины. Нужно для инварианта
+  // платёжеспособности: он считается в разрезе компании, и без её пула
+  // проверять нечего. Обновляется чтением из Oxen; `poolReadAt` говорит,
+  // насколько свежо число, — считать по протухшему опасно.
+  poolAvailableMinor BigInt    @default(0) @map("pool_available_minor")
+  poolReadAt         DateTime? @map("pool_read_at")
+
+  // Депозитный адрес пула. Только чтение: адрес выдаёт эмитент после
+  // заведения компании и подтягивается он сам. Поля для ввода руками
+  // нет нигде — введённый руками означает пул, ушедший на чужой
+  // кошелёк (docs/flows-admin.md, «Компании»).
+  poolDepositAddress String? @map("pool_deposit_address")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  users               User[]
+  ledgerTransactions  LedgerTransaction[]
+
+  @@map("companies")
+}
+
+model Operator {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  fullName     String   @map("full_name")
+  passwordHash String   @map("password_hash")
+
+  // Второй фактор обязателен: админка двигает чужие деньги. Секрет
+  // хранится до подтверждения, но фактором считается только
+  // подтверждённый — иначе оператор остался бы заперт кодом, который
+  // у него не сошёлся ни разу.
+  totpSecret      String?   @map("totp_secret")
+  totpConfirmedAt DateTime? @map("totp_confirmed_at")
+
+  isSuperAdmin Boolean  @default(false) @map("is_super_admin")
+  rights       String[]
+  locale       String   @default("ru")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  sessions OperatorSession[]
+
+  @@map("operators")
+}
+
+// Сессия оператора.
+//
+// В cookie уходит случайный токен, в базе лежит его хэш: украденный
+// дамп базы не даёт войти. Сессии хранятся, а не подписываются
+// без состояния, ровно затем, чтобы их можно было ОТОЗВАТЬ —
+// отключённый оператор должен терять доступ сразу, а не через сутки.
+model OperatorSession {
+  id         String    @id @default(cuid())
+  operatorId String    @map("operator_id")
+  tokenHash  String    @unique @map("token_hash")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  expiresAt  DateTime  @map("expires_at")
+  lastSeenAt DateTime  @default(now()) @map("last_seen_at")
+  revokedAt  DateTime? @map("revoked_at")
+
+  operator Operator @relation(fields: [operatorId], references: [id])
+
+  @@index([operatorId])
+  @@map("operator_sessions")
+}
+
+model User {
+  id               String  @id @default(cuid())
+  companyId        String  @map("company_id")
+  telegramUserId   BigInt? @unique @map("telegram_user_id")
+  oxenCardholderId String? @unique @map("oxen_cardholder_id") // chd_…
+  oxenStatus       String? @map("oxen_status")
+  fullName         String  @map("full_name")
+  email            String?
+  status           String  @default("ACTIVE") // ACTIVE | BLOCKED
+  blockedAt        DateTime? @map("blocked_at")
+  blockReason      String?   @map("block_reason")
+  locale           String    @default("en")
+
+  // Индивидуальные ставки. Пустое поле означает «берётся глобальная».
+  // Заданное ЗАМЕНЯЕТ глобальную, а не складывается с ней.
+  depositFeeBps    Int? @map("deposit_fee_bps")
+  withdrawalFeeBps Int? @map("withdrawal_fee_bps")
+
+  secondFactorHash        String?   @map("second_factor_hash")
+  recoveryCodeHash        String?   @map("recovery_code_hash")
+  recoveryQuarantineUntil DateTime? @map("recovery_quarantine_until")
+  createdAt               DateTime  @default(now()) @map("created_at")
+
+  company          Company           @relation(fields: [companyId], references: [id])
+  cards            Card[]
+  transfers        CardTransfer[]
+  depositRequests  DepositRequest[]
+  depositAddresses DepositAddress[]
+  cardTransactions CardTransaction[]
+
+  @@index([companyId])
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Карты
+// ---------------------------------------------------------------------------
+
+model Card {
+  id           String  @id @default(cuid())
+  userId       String  @map("user_id")
+  oxenCardId   String  @unique @map("oxen_card_id") // card_…
+  isPrimary    Boolean @default(false) @map("is_primary")
+  last4        String?
+  status       String // ACTIVE | FROZEN | CLOSING | CANCELED
+  freezeReason String? @map("freeze_reason") // NEGATIVE_BALANCE | BY_USER | BY_OPERATOR | CLOSING
+  closingPlan  Json?   @map("closing_plan")
+
+  limitFrequency String @default("ALL_TIME") @map("limit_frequency")
+  appliedLimit   BigInt @default(0) @map("applied_limit") // подтверждённый Oxen потолок
+
+  // Черновик модели нёс одно поле `spentCached`. Здесь их два, и это
+  // не придирка: по одной сумме нельзя ответить на вопрос «можно ли
+  // отменить карту». Отмена разрешена, только когда остаток ноль И нет
+  // незакрытых авторизаций — то есть резерв надо видеть отдельно.
+  //
+  //   потрачено (как считает Oxen) = settled + pending
+  //   остаток                      = appliedLimit − settled − pending
+  settledMinor BigInt @default(0) @map("settled_minor") // осевшие траты минус возвраты
+  pendingMinor BigInt @default(0) @map("pending_minor") // незакрытые авторизации
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user             User              @relation(fields: [userId], references: [id])
+  cardTransactions CardTransaction[]
+  transfersFrom    CardTransfer[]    @relation("transferFrom")
+  transfersTo      CardTransfer[]    @relation("transferTo")
+
+  @@index([userId])
+  @@map("cards")
+}
+
+// Перевод между картами. НЕ проводка леджера: баланс пользователя не
+// меняется, меняется только распределение по картам.
+model CardTransfer {
+  id          String @id @default(cuid())
+  userId      String @map("user_id")
+  fromCardId  String @map("from_card_id")
+  toCardId    String @map("to_card_id")
+  amountMinor BigInt @map("amount_minor")
+
+  // Состояние сохраняется ДО первого вызова наружу. Порядок обязателен:
+  // сперва уменьшить источник, потом увеличить получателя.
+  status String // PENDING | SOURCE_REDUCED | COMPLETED | FAILED
+  error  String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user     User @relation(fields: [userId], references: [id])
+  fromCard Card @relation("transferFrom", fields: [fromCardId], references: [id])
+  toCard   Card @relation("transferTo", fields: [toCardId], references: [id])
+
+  @@index([status])
+  @@map("card_transfers")
+}
+
+// ---------------------------------------------------------------------------
+// Крипто-контур: сети, адреса, поступления
+// ---------------------------------------------------------------------------
+
+model Network {
+  id       String  @id @default(cuid())
+  name     String // "Tron (TRC-20)"
+  asset    String // "USDT"
+  iconUrl  String? @map("icon_url")
+  memoLabel String? @map("memo_label")
+
+  // Два поля, а не одно: «ноль» и «минимума нет» — разные вещи.
+  // Выключенный минимум не должен превращаться в «минимум 0».
+  minDepositMinor BigInt? @map("min_deposit_minor")
+  minDepositOn    Boolean @default(false) @map("min_deposit_on")
+
+  isActive  Boolean @default(true) @map("is_active")
+  sortOrder Int     @default(0) @map("sort_order")
+
+  addresses DepositAddress[]
+  deposits  DepositRequest[]
+
+  @@map("networks")
+}
+
+// Адрес выдаётся КОНКРЕТНОМУ пользователю и закрепляется за ним.
+// Общего адреса «на всех» нет: по нему не отличить, чей платёж.
+model DepositAddress {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  networkId  String    @map("network_id")
+  address    String
+  memo       String?
+  status     String    @default("ACTIVE") // ACTIVE | BURNED
+  burnReason String?   @map("burn_reason") // REFUNDED | COMPROMISED
+  burnedAt   DateTime? @map("burned_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user     User             @relation(fields: [userId], references: [id])
+  network  Network          @relation(fields: [networkId], references: [id])
+  deposits DepositRequest[]
+
+  @@unique([networkId, address])
+  @@index([userId])
+  @@map("deposit_addresses")
+}
+
+model DepositRequest {
+  id            String  @id @default(cuid())
+  userId        String  @map("user_id")
+  networkId     String  @map("network_id")
+  addressId     String  @map("address_id")
+  declaredMinor BigInt? @map("declared_minor") // только ручной режим
+
+  // Адрес отправителя — единственный возможный получатель возврата.
+  // Сохраняется при получении: задним числом его не восстановить.
+  fromAddress String? @map("from_address")
+
+  // Ключ идемпотентности: одна транзакция в сети — одна проводка.
+  chainTxId String? @unique @map("chain_tx_id")
+  txLink    String? @map("tx_link")
+
+  receivedMinor BigInt? @map("received_minor")
+  feeMinor      BigInt? @map("fee_minor")
+
+  source     String // SYSTEM | OPERATOR
+  amlVerdict String? @map("aml_verdict") // PASSED | FAILED | UNAVAILABLE
+  amlRisk    Int?    @map("aml_risk") // оценка внешнего сервиса, мы её не считаем
+
+  status String // SUBMITTED | HELD | CREDITED | REJECTED | REFUNDED
+
+  // Оптимистическая блокировка: второй одновременный запрос по той же
+  // заявке не создаёт вторую проводку.
+  version Int @default(0)
+
+  // Захват заявки оператором. Протухает по таймауту — иначе ушедший
+  // на обед оператор блокирует заявку навсегда.
+  claimedBy String?   @map("claimed_by")
+  claimedAt DateTime? @map("claimed_at")
+
+  rejectReasonCode String? @map("reject_reason_code")
+  rejectReasonText String? @map("reject_reason_text")
+  rejectReasonLang String? @map("reject_reason_lang")
+  operatorId       String? @map("operator_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user    User           @relation(fields: [userId], references: [id])
+  network Network        @relation(fields: [networkId], references: [id])
+  address DepositAddress @relation(fields: [addressId], references: [id])
+
+  @@index([status])
+  @@index([userId])
+  @@map("deposit_requests")
+}
+
+// ---------------------------------------------------------------------------
+// Леджер
+// ---------------------------------------------------------------------------
+
+model LedgerTransaction {
+  id        String @id @default(cuid())
+  type      String // DEPOSIT | SPEND | REFUND | WITHDRAWAL | ADJUSTMENT
+  companyId String @map("company_id")
+  userId    String? @map("user_id")
+
+  // Источник проводки. Пара «тип + идентификатор» уникальна: это и есть
+  // защита от повторной доставки события и от двойного зачисления одной
+  // заявки. Проверка стоит в базе, а не в коде, — код можно обойти,
+  // уникальный индекс нельзя.
+  sourceType String? @map("source_type")
+  sourceId   String? @map("source_id")
+
+  operatorId String? @map("operator_id")
+  reason     String?
+  feeBpsUsed Int?    @map("fee_bps_used") // ставка фиксируется в момент применения
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  company Company       @relation(fields: [companyId], references: [id])
+  entries LedgerEntry[]
+
+  @@unique([sourceType, sourceId])
+  @@index([userId])
+  @@map("ledger_transactions")
+}
+
+model LedgerEntry {
+  id            String @id @default(cuid())
+  transactionId String @map("transaction_id")
+
+  // Счёт: USER:<id> | FEE_INCOME | EXTERNAL
+  account String
+
+  // Со знаком. Сумма всех записей проводки равна нулю — это и есть
+  // двойная запись.
+  amountMinor BigInt @map("amount_minor")
+  currency    String @default("USD")
+
+  transaction LedgerTransaction @relation(fields: [transactionId], references: [id])
+
+  @@index([account])
+  @@map("ledger_entries")
+}
+
+// ---------------------------------------------------------------------------
+// Зеркало транзакций эмитента
+// ---------------------------------------------------------------------------
+
+model CardTransaction {
+  id        String @id // UUID эмитента, без префикса
+  cardId    String @map("card_id")
+  userId    String @map("user_id")
+  companyId String @map("company_id")
+
+  type   String // AUTHORIZATION | SPEND | REFUND | REVERSAL
+  status String // AUTHORIZED | SETTLED | DECLINED | REVERSED
+
+  // Сумма расчёта, в валюте карты (USD). Леджер ведётся по ней.
+  amountMinor BigInt @map("amount_minor")
+  currency    String @default("USD")
+
+  // Запрошено мерчантом, в его валюте. Только для показа, в расчётах
+  // не участвует.
+  localAmount   BigInt? @map("local_amount")
+  localCurrency String? @map("local_currency")
+
+  // Из события transaction.created. Чтение транзакции у эмитента
+  // ЗАТИРАЕТ эти суммы фактически списанными, поэтому сохраняются они
+  // один раз, при получении события, и больше не трогаются. Задним
+  // числом их не восстановить, а без них не отличить курсовую разницу
+  // от чаевых.
+  authorizedAmount      BigInt? @map("authorized_amount")
+  authorizedLocalAmount BigInt? @map("authorized_local_amount")
+
+  merchantName  String?  @map("merchant_name")
+  declineReason String?  @map("decline_reason")
+  forcePosted   Boolean? @map("force_posted")
+  occurredAt    DateTime @map("occurred_at")
+  raw           Json
+
+  card Card @relation(fields: [cardId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([cardId])
+  @@index([userId])
+  @@map("card_transactions")
+}
+
+// Намерение совершить вызов наружу, который нельзя повторять вслепую.
+//
+// Записывается ДО отправки запроса вместе с идемпотентным ключом.
+// Иначе процесс, упавший между отправкой и ответом, не оставит следа,
+// и мы не узнаем, была ли выпущена карта или ушёл ли возврат, —
+// а повтор означает вторую карту либо вторую отправку денег.
+//
+// Одна таблица на все три сервиса: правило общее, и разносить его
+// по трём хранилищам значило бы получить три разные его версии.
+model OutboundIntent {
+  key         String @id // он же уходит в заголовок идемпотентности
+  service     String // OXEN | WALLET
+  operation   String // CREATE_CARDHOLDER | ISSUE_CARD | SEND_REFUND
+  subjectType String @map("subject_type") // USER | CARD | DEPOSIT
+  subjectId   String @map("subject_id") // наш идентификатор
+
+  status   String  @default("INTENT") // INTENT | SENT | DONE | FAILED
+  resultId String? @map("result_id") // chd_… | card_… | идентификатор возврата
+
+  // То, с чем обращаются в поддержку сервиса.
+  requestId String? @map("request_id")
+  error     String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Одно намерение на один предмет: повторная попытка переиспользует
+  // тот же ключ, а не выпускает вторую карту под новым.
+  @@unique([service, operation, subjectType, subjectId])
+  @@map("outbound_intents")
+}
+
+model OxenEvent {
+  id          String    @id // evt_… — ключ дедупликации
+  type        String
+  occurredAt  DateTime  @map("occurred_at")
+  subject     Json
+  data        Json
+  receivedAt  DateTime  @default(now()) @map("received_at")
+  processedAt DateTime? @map("processed_at")
+  error       String?
+
+  @@map("oxen_events")
+}
+
+// ---------------------------------------------------------------------------
+// Настройки и аудит
+// ---------------------------------------------------------------------------
+
+// Глобальные настройки, одна строка. Идентификатор фиксированный, чтобы
+// второй строки не завелось: две конкурирующие настройки комиссий —
+// это две разные суммы у двух операторов.
+model Settings {
+  id String @id @default("singleton")
+
+  depositFeeBps         Int    @default(0) @map("deposit_fee_bps")
+  depositFeeFixedMinor  BigInt @default(0) @map("deposit_fee_fixed_minor")
+  withdrawalFeeBps      Int    @default(0) @map("withdrawal_fee_bps")
+  withdrawalFeeFixedMinor BigInt @default(0) @map("withdrawal_fee_fixed_minor")
+
+  // Минимум комиссии. Процент на мелкой сумме даёт копейки, а работа
+  // по ней та же — поэтому у ставки есть нижняя граница.
+  depositFeeMinMinor    BigInt @default(0) @map("deposit_fee_min_minor")
+  withdrawalFeeMinMinor BigInt @default(0) @map("withdrawal_fee_min_minor")
+
+  // Два разных минимума. Минимум вывода — проверка запрещающая;
+  // минимум пополнения — предупреждение: деньги уже пришли, и
+  // отказываться их зачислять нельзя.
+  minDepositMinor    BigInt @default(10000) @map("min_deposit_minor")
+  minWithdrawalMinor BigInt @default(10000) @map("min_withdrawal_minor")
+
+  // Автозачисление и поведение при недоступной проверке происхождения.
+  // Второй переключатель по умолчанию ВЫКЛЮЧЕН осознанно: сбой
+  // стороннего сервиса не должен превращаться в канал, по которому
+  // к нам заходит что угодно.
+  autoCreditOn      Boolean @default(true) @map("auto_credit_on")
+  creditWithoutAml  Boolean @default(false) @map("credit_without_aml")
+  amlMaxRisk        Int     @default(70) @map("aml_max_risk")
+  confirmationsNeeded Int   @default(3) @map("confirmations_needed")
+
+  maxActiveCards Int @default(2) @map("max_active_cards")
+
+  // Когда список пар «монета + сеть» последний раз сверялся с сервисом
+  // адресов. Открывать у себя сеть, в которой адрес не выдаётся,
+  // бессмысленно, поэтому видно, насколько свежа сверка.
+  networksSyncedAt DateTime? @map("networks_synced_at")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+// Курсор догона событий.
+//
+// Одна строка на сервис. Хранится в базе, а не в памяти процесса:
+// перезапуск воркера не должен начинать догон с начала времён, а
+// пропущенное за время простоя надо дочитать ровно с того места, где
+// остановились.
+model EventCursor {
+  id     String  @id // oxen
+  cursor String?
+
+  // Когда догон последний раз дошёл до пустой страницы. Чем старше
+  // эта отметка, тем сильнее мы отстаём от эмитента.
+  lastSyncedAt DateTime? @map("last_synced_at")
+  lastError    String?   @map("last_error")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("event_cursors")
+}
+
+// Журнал обмена: каждый наш запрос наружу и каждое принятое событие.
+//
+// От журнала аудита отличается предметом. Аудит отвечает «кто из
+// операторов что сделал», этот журнал — «что ушло наружу и что пришло
+// обратно». Первый читают при разборе с человеком, второй — при
+// разборе с внешним сервисом.
+//
+// Журнал общий на три сервиса: механика разбора одна, а разносить его
+// по трём таблицам значило бы получить три разные его версии.
+//
+// Тела записаны УЖЕ ВЫЧИЩЕННЫМИ. Вычистка происходит до записи, а не
+// при показе: иначе однажды она окажется забытой (CLAUDE.md, правило 7).
+model ExchangeLog {
+  id        String @id @default(cuid())
+  service   String // OXEN | WALLET | AML
+  direction String // OUT | IN
+
+  /// Что это было. Для исходящих — метод и путь, для входящих — тип события.
+  method    String
+  path      String
+  operation String
+
+  /// Наш идентификатор предмета вызова: пользователь, карта, заявка.
+  subject String?
+
+  outcome    String // OK | FAILED
+  httpStatus Int?    @map("http_status")
+  requestId  String? @map("request_id")
+  durationMs Int     @map("duration_ms")
+  errorCode  String? @map("error_code")
+  error      String?
+
+  /// Вычищенная сводка запроса и ответа. Реквизитов, ключей и
+  /// одноразовых кодов здесь нет ни в каком виде.
+  request  Json?
+  response Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([service, createdAt])
+  @@index([createdAt])
+  @@map("exchange_log")
+}
+
+model AuditLog {
+  id         String  @id @default(cuid())
+  operatorId String? @map("operator_id")
+
+  /// Код действия, не готовый текст: в текст превращается при показе,
+  /// на языке читателя (CLAUDE.md, правило 3e).
+  action     String
+  targetType String @map("target_type")
+  targetId   String @map("target_id")
+
+  /// Имя объекта на момент действия. Данные, их не переводят, и они
+  /// нужны именно в снимке: пользователь мог сменить имя.
+  targetName String? @map("target_name")
+
+  /// Разрез по компании. Нужен фильтру: оператор разбирает «чьи это
+  /// деньги», а не «что вообще происходило».
+  companyId String? @map("company_id")
+
+  /// Причина. Код — для действий, где причина выбирается из списка;
+  /// свободный текст — для корректировок и блокировок.
+  reasonCode String? @map("reason_code")
+  reason     String?
+
+  before Json?
+  after   Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("audit_log")
+}

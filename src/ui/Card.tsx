@@ -1,14 +1,14 @@
 import type { HTMLAttributes, ReactNode } from 'react'
 import styles from './Card.module.css'
 
-export type CardTone = 'surface' | 'nested' | 'brand'
+export type CardTone = 'surface' | 'nested' | 'brand' | 'glass'
 export type CardDensity = 'roomy' | 'dense' | 'flush'
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   tone?: CardTone
   /** roomy — приложение, dense — админка, flush — карточка со своей вёрсткой. */
   density?: CardDensity
-  /** Зерно поверх фирменного градиента. Только для tone="brand". */
+  /** Зерно поверх фирменного градиента. Для tone="brand" и "glass". */
   grain?: boolean
   /** Свечение под плашкой. Только на статике (docs/brand.md). */
   glow?: boolean
@@ -19,6 +19,7 @@ const TONE: Record<CardTone, string | undefined> = {
   surface: undefined,
   nested: styles.nested,
   brand: styles.brand,
+  glass: styles.glass,
 }
 
 export function Card({
